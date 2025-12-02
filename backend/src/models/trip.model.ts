@@ -20,6 +20,7 @@ export interface ITrip extends Document {
   departureTime: Date;
   arrivalTime: Date;
   pricePerSeat: number;
+  seatPricing: Map<string, number>; // Map of seatNumber -> price for this trip
   availableSeats: number;
   bookedSeats: string[];
   seatStatus: Map<string, 'available' | 'booked' | 'locked'>;
@@ -63,6 +64,12 @@ const tripSchema = new mongoose.Schema<ITrip>(
       type: Number,
       required: true,
       min: 0,
+    },
+    // Seat-specific pricing - overrides pricePerSeat for specific seats
+    seatPricing: {
+      type: Map,
+      of: Number,
+      default: new Map(),
     },
     availableSeats: {
       type: Number,

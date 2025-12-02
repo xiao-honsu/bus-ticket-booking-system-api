@@ -17,4 +17,6 @@ router
   .patch(auth('manageTrips'), tripController.updateTrip)
   .delete(auth('manageTrips'), tripController.deleteTrip);
 
+router.route('/:tripId/seatpricing').patch(auth('manageTrips'), tripController.updateSeatPricing);
+
 export default router;

@@ -12,8 +12,11 @@ const allRoles = {
   admin: [
     'getUsers',
     'manageUsers',
+    'getBuses',
     'manageBuses',
+    'getRoutes',
     'manageRoutes',
+    'getTrips',
     'manageTrips',
     'manageBookings',
     'manageOperators',

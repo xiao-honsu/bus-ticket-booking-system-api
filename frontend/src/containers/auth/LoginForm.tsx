@@ -47,7 +47,13 @@ export default function LoginForm() {
       setAuthCookies(result.tokens, result.user.role);
       
       toast.success('Login successful!');
-      router.push('/dashboard');
+      
+      // Redirect based on role
+      if (result.user.role === 'admin') {
+        router.push('/admin');
+      } else {
+        router.push('/dashboard');
+      }
     } catch (error: any) {
       toast.error(error?.data?.message || 'Login failed. Please check your credentials.');
     }

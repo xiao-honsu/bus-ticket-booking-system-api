@@ -31,7 +31,18 @@ const createTrip = async (tripBody: Partial<ITrip>): Promise<ITrip> => {
  * @returns {Promise<QueryResult>}
  */
 const queryTrips = async (filter: any, options: PaginateOptions) => {
+  console.log('🔎 queryTrips called with filter:', filter);
+  console.log('📋 queryTrips options:', options);
+  
   const trips = await Trip.paginate(filter, options);
+  
+  console.log('💾 Database result:', {
+    totalDocs: trips.totalDocs,
+    docs: trips.docs?.length,
+    page: trips.page,
+    totalPages: trips.totalPages
+  });
+  
   return trips;
 };
 
@@ -100,6 +111,35 @@ const searchTrips = async (routeId: mongoose.Types.ObjectId, departureDate: Date
   return trips;
 };
 
+/**
+ * Update seat pricing for a trip
+ * @param {mongoose.Types.ObjectId} tripId
+ * @param {Record<string, number>} seatPricing
+ * @returns {Promise<ITrip | null>}
+ */
+const updateSeatPricing = async (
+  tripId: mongoose.Types.ObjectId,
+  seatPricing: Record<string, number>
+): Promise<ITrip | null> => {
+  const trip = await getTripById(tripId);
+  if (!trip) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'Trip not found');
+  }
+
+  // Convert to Map for MongoDB
+  const pricingMap = new Map<string, number>();
+  Object.entries(seatPricing).forEach(([seatNumber, price]) => {
+    if (price < 0) {
+      throw new ApiError(httpStatus.BAD_REQUEST, `Invalid price for seat ${seatNumber}`);
+    }
+    pricingMap.set(seatNumber, price);
+  });
+
+  trip.seatPricing = pricingMap;
+  await trip.save();
+  return trip;
+};
+
 export default {
   createTrip,
   queryTrips,
@@ -107,4 +147,5 @@ export default {
   updateTripById,
   deleteTripById,
   searchTrips,
+  updateSeatPricing,
 };

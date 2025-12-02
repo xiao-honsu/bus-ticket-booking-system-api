@@ -6,7 +6,6 @@ export interface ISeat {
   row: number;
   column: number;
   seatType: 'standard' | 'vip' | 'window' | 'aisle';
-  priceModifier: number;
   position?: {
     x: number;
     y: number;
@@ -110,10 +109,6 @@ const busSchema = new mongoose.Schema<IBus>(
             type: String,
             enum: ['standard', 'vip', 'window', 'aisle'],
             default: 'standard',
-          },
-          priceModifier: {
-            type: Number,
-            default: 0,
           },
           position: {
             x: Number,

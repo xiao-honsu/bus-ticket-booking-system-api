@@ -62,10 +62,49 @@ const deleteBusById = async (busId: mongoose.Types.ObjectId): Promise<IBus | nul
   return bus;
 };
 
+/**
+ * Update bus seat map
+ * @param {mongoose.Types.ObjectId} busId
+ * @param {Object} seatMapData
+ * @returns {Promise<IBus | null>}
+ */
+const updateSeatMap = async (busId: mongoose.Types.ObjectId, seatMapData: any): Promise<IBus | null> => {
+  const bus = await getBusById(busId);
+  if (!bus) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'Bus not found');
+  }
+
+  // Validate seat map structure
+  if (!seatMapData.rows || !seatMapData.columns || !seatMapData.seats) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Invalid seat map structure');
+  }
+
+  // Validate seats array
+  const seatNumbers = new Set();
+  for (const seat of seatMapData.seats) {
+    if (!seat.seatNumber || !seat.row || !seat.column || !seat.seatType) {
+      throw new ApiError(httpStatus.BAD_REQUEST, 'Invalid seat data');
+    }
+    // Check for duplicate seat numbers
+    if (seatNumbers.has(seat.seatNumber)) {
+      throw new ApiError(httpStatus.BAD_REQUEST, `Duplicate seat number: ${seat.seatNumber}`);
+    }
+    seatNumbers.add(seat.seatNumber);
+  }
+
+  // Update total seats
+  bus.totalSeats = seatMapData.seats.length;
+  bus.seatMap = seatMapData;
+  
+  await bus.save();
+  return bus;
+};
+
 export default {
   createBus,
   queryBuses,
   getBusById,
   updateBusById,
   deleteBusById,
+  updateSeatMap,
 };
