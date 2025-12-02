@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import { SeatMap, SeatLegend, PassengerForm } from '@/containers/seat-selection';
 import { useGetTripQuery } from '@/lib/store/services/api';
 import { useAppDispatch, useAppSelector } from '@/lib/hooks';
@@ -11,16 +12,21 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
-export default function BookingPage({ params }: { params: { tripId: string } }) {
+interface BookingPageProps {
+  params: Promise<{ tripId: string }>;
+}
+
+export default function BookingPage({ params }: BookingPageProps) {
+  const { tripId } = React.use(params);
   const router = useRouter();
   const dispatch = useAppDispatch();
-  const { data: trip, isLoading, error } = useGetTripQuery(params.tripId);
+  const { data: trip, isLoading, error } = useGetTripQuery(tripId);
   const selectedSeats = useAppSelector((state) => state.booking.selectedSeats);
   const passengers = useAppSelector((state) => state.booking.passengers);
 
   useEffect(() => {
-    dispatch(setTripId(params.tripId));
-  }, [dispatch, params.tripId]);
+    dispatch(setTripId(tripId));
+  }, [dispatch, tripId]);
 
   const handleContinueToCheckout = () => {
     if (selectedSeats.length === 0) {
@@ -103,7 +109,7 @@ export default function BookingPage({ params }: { params: { tripId: string } }) 
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
-          <SeatMap tripId={params.tripId} totalSeats={totalSeats} occupiedSeats={occupiedSeats} />
+          <SeatMap tripId={tripId} totalSeats={totalSeats} occupiedSeats={occupiedSeats} />
           <div className="mt-6">
             <PassengerForm />
           </div>
