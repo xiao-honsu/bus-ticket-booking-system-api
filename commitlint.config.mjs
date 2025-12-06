@@ -1,35 +1,23 @@
-/** @type {import('@commitlint/types').UserConfig} */
-const config = {
+export default {
   extends: ['@commitlint/config-conventional'],
   rules: {
     'type-enum': [
       2,
       'always',
       [
-        'feat',
-        'fix',
-        'docs',
-        'style',
-        'refactor',
-        'perf',
-        'test',
-        'chore',
-        'revert',
-        'build',
-        'ci',
+        'feat',     // New feature
+        'fix',      // Bug fix
+        'docs',     // Documentation changes
+        'style',    // Code style changes (formatting, etc.)
+        'refactor', // Code refactoring
+        'perf',     // Performance improvements
+        'test',     // Adding or updating tests
+        'build',    // Build system changes
+        'ci',       // CI/CD changes
+        'chore',    // Other changes (maintenance, etc.)
+        'revert',   // Revert previous commit
       ],
     ],
-    'scope-enum': [
-      1, // Warning level - allow flexibility
-      'always',
-      ['frontend', 'backend', 'root', 'deps', 'config', 'docs'],
-    ],
-    'scope-empty': [1, 'never'],
-    'subject-case': [2, 'never', ['upper-case', 'pascal-case', 'start-case']],
-    'subject-empty': [2, 'never'],
-    'subject-full-stop': [2, 'never', '.'],
-    'type-empty': [2, 'never'],
+    'subject-case': [2, 'always', 'sentence-case'],
   },
 };
-
-export default config;
