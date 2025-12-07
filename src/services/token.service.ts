@@ -4,6 +4,7 @@ import config from '../config/config';
 import { tokenTypes } from '../config/tokens';
 import Token from '../models/token.model';
 import User from '../models/user.model';
+import logger from '../config/logger';
 import mongoose from 'mongoose';
 
 /**
@@ -52,6 +53,7 @@ const saveToken = async (
     type,
     blacklisted,
   });
+  logger.info('Saved token: %o', tokenDoc);
   return tokenDoc;
 };
 
@@ -62,12 +64,39 @@ const saveToken = async (
  * @returns {Promise<IToken>}
  */
 const verifyToken = async (token: string, type: string) => {
-  const payload = jwt.verify(token, config.jwt.secret) as any;
-  const tokenDoc = await Token.findOne({ token, type, user: payload.sub, blacklisted: false });
-  if (!tokenDoc) {
-    throw new Error('Token not found');
+  try {
+    // Verify JWT signature and expiration
+    const payload = jwt.verify(token, config.jwt.secret) as any;
+
+    // Find token in database
+    const tokenDoc = await Token.findOne({ token, type, user: payload.sub, blacklisted: false });
+
+    if (!tokenDoc) {
+      // Check if token exists with different criteria
+      const anyToken = await Token.findOne({ user: payload.sub, type });
+      logger.info('Any token for user with type: %s', !!anyToken);
+
+      if (anyToken) {
+        logger.info('Found token in DB but mismatch:');
+        logger.info('- DB token (first 50 chars): %s', anyToken.token.substring(0, 50));
+        logger.info('- Request token (first 50 chars): %s', token.substring(0, 50));
+        logger.info('- Tokens match: %s', anyToken.token === token);
+      }
+
+      throw new Error('Token not found in database or has been revoked');
+    }
+
+    return tokenDoc;
+  } catch (error: any) {
+    // Enhanced error messages for debugging
+    if (error.name === 'JsonWebTokenError') {
+      throw new Error(`Invalid token: ${error.message}`);
+    }
+    if (error.name === 'TokenExpiredError') {
+      throw new Error('Token has expired');
+    }
+    throw error;
   }
-  return tokenDoc;
 };
 
 /**
@@ -105,6 +134,10 @@ const generateResetPasswordToken = async (email: string) => {
   if (!user) {
     throw new Error('No users found with this email');
   }
+
+  // Delete old reset password tokens before creating new one
+  await Token.deleteMany({ user: user._id, type: tokenTypes.RESET_PASSWORD });
+
   const expires = addMinutes(new Date(), config.jwt.resetPasswordExpirationMinutes);
   const resetPasswordToken = generateToken(user._id, expires, tokenTypes.RESET_PASSWORD);
   await saveToken(resetPasswordToken, user._id, expires, tokenTypes.RESET_PASSWORD);
@@ -117,6 +150,9 @@ const generateResetPasswordToken = async (email: string) => {
  * @returns {Promise<string>}
  */
 const generateVerifyEmailToken = async (userId: mongoose.Types.ObjectId) => {
+  // Delete old verify email tokens before creating new one
+  await Token.deleteMany({ user: userId, type: tokenTypes.VERIFY_EMAIL });
+
   const expires = addMinutes(new Date(), config.jwt.verifyEmailExpirationMinutes);
   const verifyEmailToken = generateToken(userId, expires, tokenTypes.VERIFY_EMAIL);
   await saveToken(verifyEmailToken, userId, expires, tokenTypes.VERIFY_EMAIL);

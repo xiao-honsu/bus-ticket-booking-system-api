@@ -122,12 +122,18 @@ const sendTripUpdate = async (to: string, trip: any, updateMessage: string): Pro
  * @param {string} token
  */
 const sendResetPasswordEmail = async (to: string, token: string): Promise<void> => {
-  const subject = 'Reset password';
-  const resetPasswordUrl = `http://localhost:3000/reset-password?token=${token}`;
-  const text = `Dear user,
-To reset your password, click on this link: ${resetPasswordUrl}
-If you did not request any password resets, then ignore this email.`;
-  await sendEmail(to, subject, text);
+  const subject = 'Reset Your Password - Bus Ticket Booking System';
+
+  // Use frontend URL for password reset
+  const frontendUrl = config.frontendUrl || 'http://localhost:3001';
+  const resetPasswordUrl = `${frontendUrl}/auth/reset-password?token=${encodeURIComponent(token)}`;
+
+  const html = loadTemplate('reset-password', {
+    resetPasswordUrl,
+  });
+
+  await sendEmail(to, subject, html);
+  logger.info(`Password reset email sent to ${to}`);
 };
 
 /**
@@ -136,12 +142,18 @@ If you did not request any password resets, then ignore this email.`;
  * @param {string} token
  */
 const sendVerificationEmail = async (to: string, token: string): Promise<void> => {
-  const subject = 'Email Verification';
-  const verificationEmailUrl = `http://localhost:3000/verify-email?token=${token}`;
-  const text = `Dear user,
-To verify your email, click on this link: ${verificationEmailUrl}
-If you did not create an account, then ignore this email.`;
-  await sendEmail(to, subject, text);
+  const subject = 'Verify Your Email - Bus Ticket Booking System';
+
+  // Use frontend URL for verification
+  const frontendUrl = config.frontendUrl || 'http://localhost:3001';
+  const verificationUrl = `${frontendUrl}/auth/verify-email?token=${encodeURIComponent(token)}`;
+
+  const html = loadTemplate('verify-email', {
+    verificationUrl,
+  });
+
+  await sendEmail(to, subject, html);
+  logger.info(`Verification email sent to ${to}`);
 };
 
 export default {
