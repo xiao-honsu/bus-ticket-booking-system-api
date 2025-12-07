@@ -4,12 +4,13 @@ import cors from 'cors';
 import passport from 'passport';
 import httpStatus from 'http-status';
 import compression from 'compression';
-import mongoSanitize from '@exortek/express-mongo-sanitize';
+import cookieParser from 'cookie-parser';
+// import mongoSanitize from '@exortek/express-mongo-sanitize';
 import swaggerUi from 'swagger-ui-express';
 import config from './config/config';
 import { swaggerSpec } from './config/swagger';
 import { successHandler, errorHandler } from './config/morgan';
-import { jwtStrategy, googleStrategy } from './config/passport';
+import { jwtStrategy, googleStrategy, localLoginStrategy, localRegisterStrategy } from './config/passport';
 import { generalLimiter } from './middlewares/rateLimiter';
 import { errorConverter, errorHandler as customErrorHandler } from './middlewares/error';
 import ApiError from './utils/ApiError';
@@ -29,6 +30,9 @@ app.use(
   })
 );
 
+// parse cookies
+app.use(cookieParser());
+
 // parse json request body
 app.use(express.json());
 
@@ -36,13 +40,29 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // sanitize request data
-app.use(mongoSanitize({ replaceWith: '_' }));
+// Note: We preserve JWT tokens in query strings by sanitizing them separately
+// JWT tokens contain dots (header.payload.signature) which must not be replaced
+// app.use((req, _res, next) => {
+//   // Save original token if it exists
+//   const originalToken = req.query.token;
+
+//   // Apply mongo sanitization
+//   mongoSanitize({ replaceWith: '_' })(req, _res, () => {
+//     // Restore original token after sanitization
+//     if (originalToken) {
+//       req.query.token = originalToken;
+//     }
+//     next();
+//   });
+// });
 
 // gzip compression
 app.use(compression());
 
 // jwt authentication
 app.use(passport.initialize());
+passport.use('local-login', localLoginStrategy);
+passport.use('local-register', localRegisterStrategy);
 passport.use('jwt', jwtStrategy);
 if (googleStrategy) {
   passport.use('google', googleStrategy);

@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Verify Your Email</title>
+  <style>
+    body { 
+      font-family: Arial, sans-serif; 
+      line-height: 1.6; 
+      color: #333; 
+      margin: 0;
+      padding: 0;
+      background-color: #f4f4f4;
+    }
+    .container { 
+      max-width: 600px; 
+      margin: 0 auto; 
+      padding: 20px;
+      background-color: #ffffff;
+    }
+    .header { 
+      background-color: #2196F3; 
+      color: white; 
+      padding: 20px; 
+      text-align: center;
+      border-radius: 5px 5px 0 0;
+    }
+    .header h1 {
+      margin: 0;
+      font-size: 24px;
+    }
+    .content { 
+      padding: 30px; 
+      background-color: #ffffff; 
+    }
+    .content p {
+      margin: 15px 0;
+      font-size: 16px;
+    }
+    .verify-button { 
+      display: inline-block;
+      background-color: #2196F3; 
+      color: white; 
+      padding: 15px 40px; 
+      text-decoration: none; 
+      border-radius: 5px;
+      margin: 20px 0;
+      font-weight: bold;
+      font-size: 16px;
+    }
+    .verify-button:hover {
+      background-color: #1976D2;
+    }
+    .button-container {
+      text-align: center;
+      margin: 30px 0;
+    }
+    .warning {
+      background-color: #fff3cd;
+      border-left: 4px solid #ffc107;
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+    .footer { 
+      background-color: #f4f4f4; 
+      padding: 20px; 
+      text-align: center; 
+      font-size: 12px; 
+      color: #666;
+      border-radius: 0 0 5px 5px;
+    }
+    .link-text {
+      color: #666;
+      font-size: 14px;
+      word-break: break-all;
+      margin-top: 20px;
+      padding: 10px;
+      background-color: #f9f9f9;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🎫 Bus Ticket Booking System</h1>
+    </div>
+    
+    <div class="content">
+      <h2>Welcome! Verify Your Email Address</h2>
+      
+      <p>Thank you for registering with Bus Ticket Booking System!</p>
+      
+      <p>To complete your registration and start booking bus tickets, please verify your email address by clicking the button below:</p>
+      
+      <div class="button-container">
+        <a href="{{verificationUrl}}" class="verify-button">Verify Email Address</a>
+      </div>
+      
+      <div class="warning">
+        <strong>⚠️ Important:</strong> This verification link will expire in 24 hours. If you don't verify your email within this time, you'll need to register again.
+      </div>
+      
+      <p><strong>Why verify your email?</strong></p>
+      <ul>
+        <li>Secure your account</li>
+        <li>Receive booking confirmations</li>
+        <li>Get trip updates and notifications</li>
+        <li>Recover your account if needed</li>
+      </ul>
+      
+      <p style="margin-top: 30px;">If the button doesn't work, copy and paste this link into your browser:</p>
+      <div class="link-text">
+        {{verificationUrl}}
+      </div>
+      
+      <p style="margin-top: 30px; color: #666;">If you didn't create an account with us, please ignore this email.</p>
+    </div>
+    
+    <div class="footer">
+      <p>© 2024 Bus Ticket Booking System. All rights reserved.</p>
+      <p>This is an automated email. Please do not reply to this message.</p>
+    </div>
+  </div>
+</body>
+</html>

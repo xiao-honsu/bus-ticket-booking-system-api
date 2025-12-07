@@ -44,7 +44,7 @@ if (error) {
 }
 
 export default {
-  env: envVars.NODE_ENV,
+  env: envVars.NODE_ENV as 'production' | 'development' | 'test',
   port: envVars.PORT,
   mongoose: {
     url: envVars.MONGODB_URL + (envVars.NODE_ENV === 'test' ? '-test' : ''),

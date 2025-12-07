@@ -19,13 +19,13 @@ const login = {
 
 const logout = {
   body: Joi.object().keys({
-    refreshToken: Joi.string().required(),
+    refreshToken: Joi.string().optional(), // Optional since it can come from cookie
   }),
 };
 
 const refreshTokens = {
   body: Joi.object().keys({
-    refreshToken: Joi.string().required(),
+    refreshToken: Joi.string().optional(), // Optional since it can come from cookie
   }),
 };
 
@@ -50,6 +50,12 @@ const verifyEmail = {
   }),
 };
 
+const resendVerificationEmail = {
+  body: Joi.object().keys({
+    email: Joi.string().email().required(),
+  }),
+};
+
 export default {
   register,
   login,
@@ -58,4 +64,5 @@ export default {
   forgotPassword,
   resetPassword,
   verifyEmail,
+  resendVerificationEmail,
 };
