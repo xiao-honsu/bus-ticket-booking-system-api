@@ -132,7 +132,7 @@ const localRegisterStrategy = new LocalStrategy(
     passwordField: 'password',
     passReqToCallback: true,
   },
-  async (req, email: string, password: string, done: any) => {
+  async (req: any, email: string, password: string, done: any) => {
     try {
       // Check if user already exists
       const existingUser = await User.findOne({ email });
