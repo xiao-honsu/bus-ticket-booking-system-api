@@ -12,11 +12,7 @@ router.route('/guest').post(validate(bookingValidation.createGuestBooking), book
 router
   .route('/')
   .post(auth('bookTicket'), validate(bookingValidation.createBooking), bookingController.createBooking)
-  .get(
-    auth('manageBookings', 'manageOwnBookings'),
-    validate(bookingValidation.getBookings),
-    bookingController.getBookings
-  );
+  .get(auth('manageBookings'), validate(bookingValidation.getBookings), bookingController.getBookings);
 
 router
   .route('/:bookingId')

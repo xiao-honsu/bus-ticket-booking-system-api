@@ -44,6 +44,7 @@
   },
   "dependencies": {
     "@exortek/express-mongo-sanitize": "^1.1.1",
+    "@payos/node": "^2.0.3",
     "@types/mongoose-paginate-v2": "^1.6.4",
     "bcryptjs": "^3.0.3",
     "compression": "^1.8.1",

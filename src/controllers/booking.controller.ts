@@ -25,6 +25,11 @@ const createGuestBooking = catchAsync(async (req: Request, res: Response) => {
 const getBookings = catchAsync(async (req: Request, res: Response) => {
   const filter = pick(req.query, ['user', 'trip', 'status', 'paymentStatus']);
   const options: any = pick(req.query, ['sortBy', 'limit', 'page', 'populate']);
+
+  // Set defaults
+  options.limit = options.limit ? parseInt(options.limit as string) : 10;
+  options.page = options.page ? parseInt(options.page as string) : 1;
+
   const result = await bookingService.queryBookings(filter, options);
   res.send(result);
 });

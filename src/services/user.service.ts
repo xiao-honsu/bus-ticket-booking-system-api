@@ -82,6 +82,37 @@ const deleteUserById = async (userId: mongoose.Types.ObjectId): Promise<IUser | 
   return user;
 };
 
+/**
+ * Reset user password
+ * @param {mongoose.Types.ObjectId} userId
+ * @param {string} newPassword
+ * @returns {Promise<IUser | null>}
+ */
+const resetUserPassword = async (userId: mongoose.Types.ObjectId, newPassword: string): Promise<IUser | null> => {
+  const user = await getUserById(userId);
+  if (!user) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
+  }
+  user.password = newPassword;
+  await user.save();
+  return user;
+};
+
+/**
+ * Block user (change status to suspended)
+ * @param {mongoose.Types.ObjectId} userId
+ * @returns {Promise<IUser | null>}
+ */
+const blockUser = async (userId: mongoose.Types.ObjectId): Promise<IUser | null> => {
+  const user = await getUserById(userId);
+  if (!user) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
+  }
+  user.status = 'suspended';
+  await user.save();
+  return user;
+};
+
 export default {
   createUser,
   queryUsers,
@@ -89,4 +120,6 @@ export default {
   getUserByEmail,
   updateUserById,
   deleteUserById,
+  resetUserPassword,
+  blockUser,
 };

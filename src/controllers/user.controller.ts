@@ -51,10 +51,26 @@ const getMySearchHistory = catchAsync(async (req: Request, res: Response) => {
   res.send(history);
 });
 
+const resetUserPassword = catchAsync(async (req: Request, res: Response) => {
+  const { password } = req.body;
+  if (!password) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Password is required');
+  }
+  const user = await userService.resetUserPassword(new mongoose.Types.ObjectId(req.params.userId), password);
+  res.send(user);
+});
+
+const blockUser = catchAsync(async (req: Request, res: Response) => {
+  const user = await userService.blockUser(new mongoose.Types.ObjectId(req.params.userId));
+  res.send(user);
+});
+
 export default {
   getUsers,
   getUser,
   updateUser,
   deleteUser,
   getMySearchHistory,
+  resetUserPassword,
+  blockUser,
 };

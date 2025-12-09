@@ -30,11 +30,7 @@ const createOperator = async (operatorBody: Partial<IOperator>): Promise<IOperat
  * @returns {Promise<IOperator[]>}
  */
 const queryOperators = async (filter: any, options: any) => {
-  const operators = await Operator.find(filter)
-    .sort(options.sortBy)
-    .limit(options.limit)
-    .skip((options.page - 1) * options.limit);
-
+  const operators = await Operator.paginate(filter, options);
   return operators;
 };
 

@@ -14,4 +14,8 @@ router
   .patch(auth('manageUsers'), userController.updateUser)
   .delete(auth('manageUsers'), userController.deleteUser);
 
+router.route('/:userId/reset-password').patch(auth('manageUsers'), userController.resetUserPassword);
+
+router.route('/:userId/block').patch(auth('manageUsers'), userController.blockUser);
+
 export default router;
