@@ -19,7 +19,8 @@ const lockSeats = async (
   tripId: mongoose.Types.ObjectId,
   seatNumbers: string[],
   sessionId: string,
-  userId?: mongoose.Types.ObjectId
+  userId?: mongoose.Types.ObjectId,
+  metadata?: { guestEmail?: string; guestPhone?: string; [key: string]: any }
 ): Promise<ISeatLock> => {
   // Verify trip exists
   const trip = await Trip.findById(tripId);
@@ -60,6 +61,7 @@ const lockSeats = async (
       sessionId,
       user: userId,
       expiresAt,
+      metadata,
     });
 
     logger.info(`Seats ${seatNumbers.join(', ')} locked for trip ${tripId} until ${expiresAt}`);
@@ -196,6 +198,57 @@ const cleanupExpiredLocks = async (): Promise<number> => {
   return result.deletedCount || 0;
 };
 
+/**
+ * Check seat availability (for validation before locking)
+ * @param {mongoose.Types.ObjectId} tripId
+ * @param {string[]} seatNumbers
+ * @returns {Promise<object>}
+ */
+const checkSeatAvailability = async (
+  tripId: mongoose.Types.ObjectId,
+  seatNumbers: string[]
+): Promise<{
+  available: string[];
+  booked: string[];
+  locked: string[];
+  invalid: string[];
+}> => {
+  // Verify trip exists
+  const trip = await Trip.findById(tripId).populate('bus');
+  if (!trip) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'Trip not found');
+  }
+
+  const bus = trip.bus as any;
+  const validSeats = bus?.seatMap?.seats?.map((s: any) => s.seatNumber) || [];
+
+  // Check which seats are invalid
+  const invalid = seatNumbers.filter((seat) => !validSeats.includes(seat));
+
+  // Check which seats are booked
+  const booked = seatNumbers.filter((seat) => trip.bookedSeats.includes(seat));
+
+  // Check which seats are locked
+  const lockedSeatsData = await SeatLock.find({
+    trip: tripId,
+    seatNumbers: { $in: seatNumbers },
+    expiresAt: { $gt: new Date() },
+  });
+  const locked = lockedSeatsData.flatMap((lock) => lock.seatNumbers).filter((seat) => seatNumbers.includes(seat));
+
+  // Available seats are those not booked, not locked, and valid
+  const available = seatNumbers.filter(
+    (seat) => !booked.includes(seat) && !locked.includes(seat) && !invalid.includes(seat)
+  );
+
+  return {
+    available,
+    booked,
+    locked,
+    invalid,
+  };
+};
+
 export default {
   lockSeats,
   releaseLocks,
@@ -205,4 +258,5 @@ export default {
   extendLocks,
   doesSessionOwnLock,
   cleanupExpiredLocks,
+  checkSeatAvailability,
 };

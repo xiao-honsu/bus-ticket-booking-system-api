@@ -1,12 +1,47 @@
 import httpStatus from 'http-status';
 import mongoose, { PaginateOptions } from 'mongoose';
 import Booking, { IBooking } from '../models/booking.model';
-import Trip from '../models/trip.model';
+import Trip, { ITrip } from '../models/trip.model';
 import User from '../models/user.model';
 import ApiError from '../utils/ApiError';
 import emailService from './email.service';
 import seatLockService from './seatlock.service';
 import logger from '../config/logger';
+
+/**
+ * Calculate refund amount based on cancellation policy
+ * @param {IBooking} booking - Booking to calculate refund for
+ * @param {ITrip | null} trip - Associated trip
+ * @returns {number} Refund amount
+ */
+const calculateRefund = (booking: IBooking, trip: ITrip | null): number => {
+  if (!trip || !booking.totalAmount) {
+    return 0;
+  }
+
+  const now = new Date();
+  const departureTime = new Date(trip.departureTime);
+  const hoursUntilDeparture = (departureTime.getTime() - now.getTime()) / (1000 * 60 * 60);
+
+  // Refund policy:
+  // - More than 24 hours: 90% refund
+  // - 12-24 hours: 70% refund
+  // - 6-12 hours: 50% refund
+  // - 2-6 hours: 25% refund
+  // - Less than 2 hours: No refund
+
+  if (hoursUntilDeparture > 24) {
+    return booking.totalAmount * 0.9;
+  } else if (hoursUntilDeparture > 12) {
+    return booking.totalAmount * 0.7;
+  } else if (hoursUntilDeparture > 6) {
+    return booking.totalAmount * 0.5;
+  } else if (hoursUntilDeparture > 2) {
+    return booking.totalAmount * 0.25;
+  }
+
+  return 0;
+};
 
 /**
  * Create a booking
@@ -59,12 +94,21 @@ const createBooking = async (bookingBody: Partial<IBooking>, sessionId?: string)
     await seatLockService.releaseSpecificLocks(trip._id, requestedSeats, sessionId);
   }
 
+  // Populate booking for email
+  await booking.populate([
+    {
+      path: 'trip',
+      populate: [{ path: 'route' }, { path: 'bus', populate: { path: 'operator' } }, { path: 'operator' }],
+    },
+  ]);
+
   // Send confirmation email
   try {
     if (bookingBody.user) {
       const user = await User.findById(bookingBody.user);
       if (user && user.email) {
         await emailService.sendBookingConfirmation(user.email, booking);
+        logger.info(`Booking confirmation email queued for ${user.email}`);
       }
     }
   } catch (error) {
@@ -153,10 +197,19 @@ const createGuestBooking = async (bookingBody: Partial<IBooking>, sessionId?: st
     await seatLockService.releaseSpecificLocks(trip._id, requestedSeats, sessionId);
   }
 
+  // Populate booking for email
+  await booking.populate([
+    {
+      path: 'trip',
+      populate: [{ path: 'route' }, { path: 'bus', populate: { path: 'operator' } }, { path: 'operator' }],
+    },
+  ]);
+
   // Send confirmation email to guest
   try {
     if (bookingBody.guestEmail) {
       await emailService.sendBookingConfirmation(bookingBody.guestEmail, booking);
+      logger.info(`Guest booking confirmation email queued for ${bookingBody.guestEmail}`);
     }
   } catch (error) {
     logger.error('Failed to send guest booking confirmation email:', error);
@@ -235,10 +288,33 @@ const cancelBooking = async (bookingId: mongoose.Types.ObjectId, reason: string)
     await trip.save();
   }
 
+  // Calculate refund based on cancellation time
+  const refundAmount = calculateRefund(booking, trip);
+
   booking.status = 'cancelled';
   booking.cancellationReason = reason;
   booking.cancelledAt = new Date();
+
+  // Update payment status with refund
+  if (booking.payment) {
+    booking.payment.refund = {
+      amount: refundAmount,
+      refundAmount: refundAmount,
+      refundPercentage: booking.totalAmount ? Number(((refundAmount / booking.totalAmount) * 100).toFixed(0)) : 0,
+      status: 'pending',
+      requestedAt: new Date(),
+    };
+  }
+
   await booking.save();
+
+  // Populate booking for email
+  await booking.populate([
+    {
+      path: 'trip',
+      populate: [{ path: 'route' }, { path: 'bus', populate: { path: 'operator' } }, { path: 'operator' }],
+    },
+  ]);
 
   // Send cancellation email
   try {
@@ -252,7 +328,8 @@ const cancelBooking = async (bookingId: mongoose.Types.ObjectId, reason: string)
     }
 
     if (email) {
-      await emailService.sendBookingCancellation(email, booking);
+      await emailService.sendEnhancedBookingCancellation(email, booking, refundAmount, reason);
+      logger.info(`Cancellation email with refund details sent to ${email}`);
     }
   } catch (error) {
     logger.error('Failed to send booking cancellation email:', error);

@@ -87,12 +87,29 @@ const extendLocks = catchAsync(async (req: Request, res: Response) => {
     return;
   }
 
-  const count = await seatLockService.extendLocks(effectiveSessionId, minutes);
+  const count = await seatLockService.extendLocks(effectiveSessionId, minutes || 10);
 
   res.status(httpStatus.OK).json({
     success: true,
-    message: `${count} seat lock(s) extended`,
-    data: { extendedCount: count },
+    message: `${count} seat lock(s) extended by ${minutes || 10} minutes`,
+    data: {
+      extendedCount: count,
+      newExpiresAt: new Date(Date.now() + (minutes || 10) * 60 * 1000),
+    },
+  });
+});
+
+/**
+ * Check if seats are available
+ */
+const checkAvailability = catchAsync(async (req: Request, res: Response) => {
+  const { tripId, seatNumbers } = req.body;
+
+  const trip = await seatLockService.checkSeatAvailability(new mongoose.Types.ObjectId(tripId), seatNumbers);
+
+  res.status(httpStatus.OK).json({
+    success: true,
+    data: trip,
   });
 });
 
@@ -101,4 +118,5 @@ export default {
   releaseLocks,
   getLockedSeats,
   extendLocks,
+  checkAvailability,
 };

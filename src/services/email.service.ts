@@ -3,7 +3,6 @@ import config from '../config/config';
 import logger from '../config/logger';
 import fs from 'fs';
 import path from 'path';
-
 const transport = nodemailer.createTransport(config.email.smtp);
 
 /* istanbul ignore next */
@@ -60,25 +59,100 @@ const loadTemplate = (templateName: string, variables: Record<string, any>): str
 };
 
 /**
- * Send booking confirmation email
- * @param {string} to
- * @param {object} booking
+ * Send booking confirmation email with comprehensive details
+ * @param {string} to - Recipient email
+ * @param {IBooking} booking - Populated booking document
  */
 const sendBookingConfirmation = async (to: string, booking: any): Promise<void> => {
-  const subject = 'Booking Confirmation - Bus Ticket Booking System';
+  const subject = '🎉 Booking Confirmed - Your Bus Ticket is Ready!';
 
-  // Extract seat numbers from passengers
-  const seats = booking.passengers?.map((p: any) => p.seatNumber).join(', ') || 'N/A';
+  try {
+    // Extract trip details from populated booking
+    const trip = booking.trip;
+    const route = trip?.route;
+    const bus = trip?.bus;
+    const operator = trip?.operator || bus?.operator;
 
-  const html = loadTemplate('booking-confirmation', {
-    bookingId: booking._id.toString(),
-    seats,
-    totalPrice: booking.totalAmount || 0,
-    tripDate: booking.trip?.departureTime || 'N/A',
-  });
+    // Format passenger list with seat details
+    const passengersList =
+      booking.passengers
+        ?.map(
+          (p: any) => `
+        <div class="passenger-card">
+          <h4>👤 ${p.name}</h4>
+          <p style="margin: 5px 0;"><strong>Seat:</strong> <span class="seat-badge">${p.seatNumber}</span></p>
+          <p style="margin: 5px 0;"><strong>Age:</strong> ${p.age || 'N/A'}</p>
+          <p style="margin: 5px 0;"><strong>Gender:</strong> ${p.gender || 'N/A'}</p>
+        </div>
+      `
+        )
+        .join('') || '<p>No passenger details available</p>';
 
-  await sendEmail(to, subject, html);
-  logger.info(`Booking confirmation email sent to ${to}`);
+    // Format seat numbers for display
+    const seats = booking.passengers?.map((p: any) => p.seatNumber).join(', ') || 'N/A';
+
+    // Format dates and times
+    const departureTime = trip?.departureTime
+      ? new Date(trip.departureTime).toLocaleString('en-US', {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        })
+      : 'N/A';
+
+    const arrivalTime = trip?.arrivalTime
+      ? new Date(trip.arrivalTime).toLocaleString('en-US', {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        })
+      : 'N/A';
+
+    // Format amenities
+    const amenities = bus?.amenities?.length ? bus.amenities.join(', ') : 'Standard amenities';
+
+    const html = loadTemplate('booking-confirmation', {
+      bookingId: booking._id.toString(),
+      seats,
+      seatCount: booking.passengers?.length || 0,
+      totalPrice: booking.totalAmount?.toLocaleString() || '0',
+      ticketPrice: booking.totalAmount?.toLocaleString() || '0',
+      departureLocation: route?.origin?.city || 'N/A',
+      arrivalLocation: route?.destination?.city || 'N/A',
+      departureTime,
+      arrivalTime,
+      operatorName: operator?.name || 'N/A',
+      busType: bus?.busType || 'N/A',
+      busNumber: bus?.busNumber || 'N/A',
+      amenities,
+      passengersList,
+      boardingPoint: route?.origin?.address || route?.origin?.city || 'N/A',
+      viewBookingUrl: `${config.clientUrl}/bookings/${booking._id}`,
+      downloadTicketUrl: `${config.clientUrl}/bookings/${booking._id}/download`,
+      cancelBookingUrl: `${config.clientUrl}/bookings/${booking._id}/cancel`,
+      supportPhone: config.supportPhone || '+1-234-567-8900',
+      supportEmail: config.supportEmail || 'support@busticketing.com',
+      websiteUrl: config.clientUrl || 'https://busticketing.com',
+      termsUrl: `${config.clientUrl}/terms`,
+      privacyUrl: `${config.clientUrl}/privacy`,
+      supportUrl: `${config.clientUrl}/support`,
+      facebookUrl: 'https://facebook.com/busticketing',
+      twitterUrl: 'https://twitter.com/busticketing',
+      instagramUrl: 'https://instagram.com/busticketing',
+    });
+
+    await sendEmail(to, subject, html);
+    logger.info(`Enhanced booking confirmation email sent to ${to} for booking ${booking._id}`);
+  } catch (error) {
+    logger.error(`Failed to send booking confirmation email to ${to}:`, error);
+    throw error;
+  }
 };
 
 /**
@@ -156,12 +230,232 @@ const sendVerificationEmail = async (to: string, token: string): Promise<void> =
   logger.info(`Verification email sent to ${to}`);
 };
 
+/**
+ * Send booking reminder email (24h or 2h before departure)
+ * @param {string} to - Recipient email
+ * @param {any} booking - Populated booking document
+ * @param {number} hoursBeforeDeparture - Hours remaining (24 or 2)
+ */
+const sendBookingReminder = async (to: string, booking: any, hoursBeforeDeparture: number): Promise<void> => {
+  const subject = `⏰ Trip Reminder: Your journey in ${hoursBeforeDeparture} hours!`;
+
+  try {
+    const trip = booking.trip;
+    const route = trip?.route;
+    const bus = trip?.bus;
+    const operator = trip?.operator || bus?.operator;
+
+    const seats = booking.passengers?.map((p: any) => p.seatNumber).join(', ') || 'N/A';
+
+    const departureTime = trip?.departureTime
+      ? new Date(trip.departureTime).toLocaleString('en-US', {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        })
+      : 'N/A';
+
+    const arrivalTime = trip?.arrivalTime
+      ? new Date(trip.arrivalTime).toLocaleString('en-US', {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        })
+      : 'N/A';
+
+    const timeRemaining = hoursBeforeDeparture === 24 ? '24 hours' : '2 hours';
+
+    const html = loadTemplate('booking-reminder', {
+      bookingId: booking._id.toString(),
+      timeRemaining,
+      departureLocation: route?.origin?.city || 'N/A',
+      arrivalLocation: route?.destination?.city || 'N/A',
+      departureTime,
+      arrivalTime,
+      seats,
+      operatorName: operator?.name || 'N/A',
+      busType: bus?.busType || 'N/A',
+      boardingPoint: route?.origin?.address || route?.origin?.city || 'N/A',
+      viewBookingUrl: `${config.clientUrl}/bookings/${booking._id}`,
+      downloadTicketUrl: `${config.clientUrl}/bookings/${booking._id}/download`,
+      cancelBookingUrl: `${config.clientUrl}/bookings/${booking._id}/cancel`,
+      supportPhone: config.supportPhone || '+1-234-567-8900',
+      supportEmail: config.supportEmail || 'support@busticketing.com',
+    });
+
+    await sendEmail(to, subject, html);
+    logger.info(`Booking reminder (${hoursBeforeDeparture}h) sent to ${to} for booking ${booking._id}`);
+  } catch (error) {
+    logger.error(`Failed to send booking reminder to ${to}:`, error);
+    throw error;
+  }
+};
+
+/**
+ * Send seat lock expiration reminder
+ * @param {string} to - Recipient email
+ * @param {any} seatLock - Seat lock document with trip details
+ * @param {number} minutesLeft - Minutes remaining before expiration
+ */
+const sendSeatLockReminder = async (to: string, seatLock: any, minutesLeft: number): Promise<void> => {
+  const subject = `🚨 Hurry! Your seats expire in ${minutesLeft} minutes`;
+
+  try {
+    const trip = seatLock.trip;
+    const route = trip?.route;
+    const bus = trip?.bus;
+
+    const seatNumbers = seatLock.seatNumbers?.join(', ') || 'N/A';
+    const seatNumbersDisplay =
+      seatLock.seatNumbers?.map((seat: string) => `<span class="seat-number">${seat}</span>`).join('') || '';
+
+    const departureTime = trip?.departureTime
+      ? new Date(trip.departureTime).toLocaleString('en-US', {
+          weekday: 'short',
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        })
+      : 'N/A';
+
+    const totalPrice = seatLock.seatNumbers?.length
+      ? (seatLock.seatNumbers.length * (trip?.price || 0)).toLocaleString()
+      : '0';
+
+    const html = loadTemplate('seat-lock-reminder', {
+      minutesLeft: minutesLeft.toString(),
+      sessionId: seatLock.sessionId,
+      seatNumbers,
+      seatNumbersDisplay,
+      departureCity: route?.origin?.city || 'N/A',
+      arrivalCity: route?.destination?.city || 'N/A',
+      departureTime,
+      busType: bus?.busType || 'N/A',
+      totalPrice,
+      completeBookingUrl: `${config.clientUrl}/booking/complete?sessionId=${seatLock.sessionId}`,
+      extendLockUrl: `${config.clientUrl}/booking/extend?sessionId=${seatLock.sessionId}`,
+      supportPhone: config.supportPhone || '+1-234-567-8900',
+      supportEmail: config.supportEmail || 'support@busticketing.com',
+    });
+
+    await sendEmail(to, subject, html);
+    logger.info(`Seat lock reminder sent to ${to} for session ${seatLock.sessionId}`);
+  } catch (error) {
+    logger.error(`Failed to send seat lock reminder to ${to}:`, error);
+    throw error;
+  }
+};
+
+/**
+ * Send enhanced booking cancellation email with refund details
+ * @param {string} to - Recipient email
+ * @param {any} booking - Booking document
+ * @param {number} refundAmount - Calculated refund amount
+ * @param {string} refundReason - Reason for cancellation
+ */
+const sendEnhancedBookingCancellation = async (
+  to: string,
+  booking: any,
+  refundAmount: number,
+  refundReason?: string
+): Promise<void> => {
+  const subject = '❌ Booking Cancelled - Refund Initiated';
+
+  try {
+    const trip = booking.trip;
+    const route = trip?.route;
+
+    const seats = booking.passengers?.map((p: any) => p.seatNumber).join(', ') || 'N/A';
+    const refundPercentage = booking.totalAmount ? ((refundAmount / booking.totalAmount) * 100).toFixed(0) : '0';
+
+    const html = loadTemplate('booking-cancellation', {
+      bookingId: booking._id.toString(),
+      refundAmount: refundAmount.toLocaleString(),
+      refundPercentage,
+      originalAmount: booking.totalAmount?.toLocaleString() || '0',
+      cancellationReason: refundReason || 'User requested cancellation',
+      seats,
+      departureLocation: route?.origin?.city || 'N/A',
+      arrivalLocation: route?.destination?.city || 'N/A',
+      supportPhone: config.supportPhone || '+1-234-567-8900',
+      supportEmail: config.supportEmail || 'support@busticketing.com',
+    });
+
+    await sendEmail(to, subject, html);
+    logger.info(`Enhanced cancellation email sent to ${to} for booking ${booking._id}`);
+  } catch (error) {
+    logger.error(`Failed to send enhanced cancellation email to ${to}:`, error);
+    throw error;
+  }
+};
+
+/**
+ * Send enhanced trip update email
+ * @param {string} to - Recipient email
+ * @param {any} booking - Booking document
+ * @param {string} updateType - Type of update (delay, cancellation, gate_change, etc.)
+ * @param {any} updateDetails - Details about the update
+ */
+const sendEnhancedTripUpdate = async (
+  to: string,
+  booking: any,
+  updateType: string,
+  updateDetails: any
+): Promise<void> => {
+  const updateTypeLabels: Record<string, string> = {
+    delay: '⏰ Trip Delayed',
+    cancellation: '❌ Trip Cancelled',
+    gate_change: '📍 Boarding Point Changed',
+    time_change: '🕐 Departure Time Changed',
+    bus_change: '🚌 Bus Changed',
+  };
+
+  const subject = updateTypeLabels[updateType] || '⚠️ Important Trip Update';
+
+  try {
+    const trip = booking.trip;
+    const route = trip?.route;
+
+    const html = loadTemplate('trip-update', {
+      tripId: trip?._id.toString() || 'N/A',
+      bookingId: booking._id.toString(),
+      updateMessage: updateDetails.message || 'There has been an update to your trip',
+      updateType: updateTypeLabels[updateType] || 'Trip Update',
+      oldValue: updateDetails.oldValue || '',
+      newValue: updateDetails.newValue || '',
+      departureLocation: route?.origin?.city || 'N/A',
+      arrivalLocation: route?.destination?.city || 'N/A',
+      refundAvailable: updateType === 'cancellation' ? 'Yes' : 'No',
+      viewBookingUrl: `${config.clientUrl}/bookings/${booking._id}`,
+      supportPhone: config.supportPhone || '+1-234-567-8900',
+      supportEmail: config.supportEmail || 'support@busticketing.com',
+    });
+
+    await sendEmail(to, subject, html);
+    logger.info(`Trip update (${updateType}) email sent to ${to} for booking ${booking._id}`);
+  } catch (error) {
+    logger.error(`Failed to send trip update email to ${to}:`, error);
+    throw error;
+  }
+};
+
 export default {
   transport,
   sendEmail,
   sendBookingConfirmation,
   sendBookingCancellation,
+  sendEnhancedBookingCancellation,
   sendTripUpdate,
+  sendEnhancedTripUpdate,
   sendResetPasswordEmail,
   sendVerificationEmail,
+  sendBookingReminder,
+  sendSeatLockReminder,
 };

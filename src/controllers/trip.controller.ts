@@ -34,7 +34,14 @@ const getTrips = catchAsync(async (req: Request, res: Response) => {
   // Set defaults
   options.limit = options.limit ? parseInt(options.limit as string) : 10;
   options.page = options.page ? parseInt(options.page as string) : 1;
-  options.populate = options.populate || 'bus,route';
+
+  // Fix populate format - convert comma-separated string to array of populate objects
+  if (options.populate && typeof options.populate === 'string') {
+    options.populate = options.populate.split(',').map((path: string) => ({ path: path.trim() }));
+  } else if (!options.populate) {
+    // Default populate
+    options.populate = [{ path: 'bus' }, { path: 'route' }];
+  }
 
   const result = await tripService.queryTrips(filter, options);
 
@@ -60,6 +67,7 @@ const searchTrips = catchAsync(async (req: Request, res: Response) => {
     busType,
     amenities,
     operatorId,
+    minAvailableSeats,
     sortBy,
     sortOrder,
     page,
@@ -77,6 +85,7 @@ const searchTrips = catchAsync(async (req: Request, res: Response) => {
     busType: busType as string,
     amenities: amenities as string | string[],
     operatorId: operatorId as string,
+    minAvailableSeats: minAvailableSeats ? Number(minAvailableSeats) : undefined,
     sortBy: sortBy as any,
     sortOrder: sortOrder as 'asc' | 'desc',
     page: page ? Number(page) : 1,
@@ -152,6 +161,15 @@ const updateSeatPricing = catchAsync(async (req: Request, res: Response) => {
   res.send(trip);
 });
 
+const getSeatMap = catchAsync(async (req: Request, res: Response) => {
+  const { sessionId } = req.query;
+  const seatMap = await tripService.getSeatMap(
+    new mongoose.Types.ObjectId(req.params.tripId),
+    sessionId as string | undefined
+  );
+  res.send(seatMap);
+});
+
 export default {
   createTrip,
   getTrips,
@@ -161,4 +179,5 @@ export default {
   updateTrip,
   deleteTrip,
   updateSeatPricing,
+  getSeatMap,
 };

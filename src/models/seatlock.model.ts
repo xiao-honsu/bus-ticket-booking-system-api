@@ -5,8 +5,15 @@ export interface ISeatLock extends Document {
   trip: mongoose.Types.ObjectId;
   seatNumbers: string[];
   user?: mongoose.Types.ObjectId;
+  userId?: mongoose.Types.ObjectId; // Alternative to user for populated data
   sessionId: string;
   expiresAt: Date;
+  reminderSent?: boolean;
+  metadata?: {
+    guestEmail?: string;
+    guestPhone?: string;
+    [key: string]: any;
+  };
 }
 
 export interface ISeatLockModel extends Model<ISeatLock>, PaginateModel<ISeatLock> {}
@@ -38,6 +45,13 @@ const seatLockSchema = new mongoose.Schema<ISeatLock>(
       type: Date,
       required: true,
       // Note: TTL index is created separately below, not here
+    },
+    reminderSent: {
+      type: Boolean,
+      default: false,
+    },
+    metadata: {
+      type: mongoose.Schema.Types.Mixed,
     },
   },
   {

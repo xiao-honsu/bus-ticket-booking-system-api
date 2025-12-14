@@ -2,22 +2,22 @@ paths:
   # ============================================
   # LOCATIONS API - City Autocomplete & Popular
   # ============================================
-  
+
   /v1/locations/search:
     get:
       summary: Search locations for autocomplete
       description: |
         **Use Case: City Autocomplete in Search Form**
-        
+
         Frontend should call this API when the user types in the origin or destination input field.
         Implement debouncing (300ms recommended) to avoid excessive API calls.
-        
+
         **Frontend Implementation Tips:**
         - Call when user types >= 1 character
         - Use `type` parameter based on which field user is typing in
         - Display results in a dropdown below the input
         - Show location type indicator (origin/destination/both)
-        
+
         **Example Flow:**
         1. User types "Hồ" in origin field
         2. Frontend calls: `GET /v1/locations/search?q=Hồ&type=origin`
@@ -34,7 +34,7 @@ paths:
             type: string
             minLength: 1
             maxLength: 100
-          example: "Hồ Chí"
+          example: 'Hồ Chí'
         - name: type
           in: query
           required: false
@@ -66,12 +66,18 @@ paths:
                 items:
                   $ref: '#/components/schemas/LocationSuggestion'
               example:
-                - name: "Hồ Chí Minh"
-                  type: "both"
-                - name: "Hội An"
-                  type: "destination"
-                - name: "Hòa Bình"
-                  type: "origin"
+                - city: 'Hồ Chí Minh'
+                  state: 'Hồ Chí Minh'
+                  displayName: 'Hồ Chí Minh, Hồ Chí Minh'
+                  type: 'both'
+                - city: 'Hội An'
+                  state: 'Quảng Nam'
+                  displayName: 'Hội An, Quảng Nam'
+                  type: 'destination'
+                - city: 'Hòa Bình'
+                  state: 'Hòa Bình'
+                  displayName: 'Hòa Bình, Hòa Bình'
+                  type: 'origin'
         '400':
           description: Invalid query parameters
           content:
@@ -80,22 +86,22 @@ paths:
                 $ref: '#/components/schemas/Error'
               example:
                 code: 400
-                message: "\"q\" is required"
+                message: '"q" is required'
 
   /v1/locations/popular:
     get:
       summary: Get popular locations
       description: |
         **Use Case: Show Popular Destinations on Homepage/Search Page**
-        
+
         Display popular cities based on user search patterns.
         Use this to show "Popular destinations" section or quick search buttons.
-        
+
         **Frontend Implementation Tips:**
         - Cache results for 5-10 minutes (data changes infrequently)
         - Display as chips/buttons for quick selection
         - Show search count as indicator of popularity
-        
+
         **Example Display:**
         ```
         Popular Destinations:
@@ -123,13 +129,13 @@ paths:
                 items:
                   $ref: '#/components/schemas/PopularLocation'
               example:
-                - name: "Hồ Chí Minh"
+                - name: 'Hồ Chí Minh'
                   searchCount: 12500
-                - name: "Đà Lạt"
+                - name: 'Đà Lạt'
                   searchCount: 8200
-                - name: "Nha Trang"
+                - name: 'Nha Trang'
                   searchCount: 6100
-                - name: "Hà Nội"
+                - name: 'Hà Nội'
                   searchCount: 5800
 
   /v1/locations/popular-routes:
@@ -137,15 +143,15 @@ paths:
       summary: Get popular routes
       description: |
         **Use Case: Show Popular Routes for Quick Booking**
-        
+
         Display frequently booked routes with origin-destination pairs.
         Perfect for "Popular routes" carousel or quick booking section.
-        
+
         **Frontend Implementation Tips:**
         - Display as cards with route name and booking count
         - Make clickable to pre-fill search form
         - Show booking count as social proof
-        
+
         **Example Display:**
         ```
         Popular Routes:
@@ -177,13 +183,13 @@ paths:
                 items:
                   $ref: '#/components/schemas/PopularRoute'
               example:
-                - id: "507f1f77bcf86cd799439011"
-                  routeName: "Sài Gòn - Đà Lạt"
-                  origin: "Hồ Chí Minh"
-                  destination: "Đà Lạt"
+                - id: '507f1f77bcf86cd799439011'
+                  routeName: 'Sài Gòn - Đà Lạt'
+                  origin: 'Hồ Chí Minh'
+                  destination: 'Đà Lạt'
                   totalBookings: 5000
-                - id: "507f1f77bcf86cd799439012"
-                  routeName: "Hà Nội - Sapa"
-                  origin: "Hà Nội"
-                  destination: "Sapa"
+                - id: '507f1f77bcf86cd799439012'
+                  routeName: 'Hà Nội - Sapa'
+                  origin: 'Hà Nội'
+                  destination: 'Sapa'
                   totalBookings: 3200
