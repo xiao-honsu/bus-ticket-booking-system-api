@@ -17,6 +17,7 @@ interface SearchTripsOptions {
   busType?: string;
   amenities?: string | string[];
   operatorId?: string;
+  minAvailableSeats?: number;
   sortBy?: 'price' | 'departureTime' | 'duration' | 'availableSeats';
   sortOrder?: 'asc' | 'desc';
   page?: number;
@@ -200,6 +201,7 @@ const searchTrips = async (options: SearchTripsOptions): Promise<SearchResult> =
     busType,
     amenities,
     operatorId,
+    minAvailableSeats,
     sortBy = 'departureTime',
     sortOrder = 'asc',
     page = 1,
@@ -301,6 +303,15 @@ const searchTrips = async (options: SearchTripsOptions): Promise<SearchResult> =
     },
   });
 
+  // Stage 6.5: Filter by minimum available seats
+  if (minAvailableSeats !== undefined && minAvailableSeats > 0) {
+    pipeline.push({
+      $match: {
+        availableSeatsCount: { $gte: minAvailableSeats },
+      },
+    });
+  }
+
   // Stage 7: Sort
   const sortMap: Record<string, string> = {
     price: 'pricePerSeat',
@@ -391,11 +402,13 @@ const getTripDetails = async (tripId: mongoose.Types.ObjectId) => {
     throw new ApiError(httpStatus.NOT_FOUND, 'Trip not found');
   }
 
-  // Get locked seats
+  // Get locked seats with details
   const lockedSeats = await SeatLock.find({
     trip: tripId,
     expiresAt: { $gt: new Date() },
-  }).select('seatNumbers');
+  })
+    .select('seatNumbers sessionId expiresAt')
+    .lean();
 
   const lockedSeatNumbers = lockedSeats.flatMap((lock) => lock.seatNumbers);
 
@@ -407,11 +420,13 @@ const getTripDetails = async (tripId: mongoose.Types.ObjectId) => {
     bus.seatMap.seats.forEach((seat: any) => {
       const isBooked = trip.bookedSeats?.includes(seat.seatNumber);
       const isLocked = lockedSeatNumbers.includes(seat.seatNumber);
+      const lockInfo = isLocked ? lockedSeats.find((l) => l.seatNumbers.includes(seat.seatNumber)) : null;
 
       seatAvailability[seat.seatNumber] = {
         ...seat,
         status: isBooked ? 'booked' : isLocked ? 'locked' : 'available',
         price: trip.pricePerSeat + (seat.priceModifier || 0),
+        lockedUntil: lockInfo ? lockInfo.expiresAt : null,
       };
     });
   }
@@ -419,18 +434,129 @@ const getTripDetails = async (tripId: mongoose.Types.ObjectId) => {
   // Calculate stats
   const bookedCount = trip.bookedSeats?.length || 0;
   const totalSeats = bus?.totalSeats || 0;
-  const availableSeats = totalSeats - bookedCount - lockedSeatNumbers.length;
+  const lockedCount = new Set(lockedSeatNumbers).size; // Unique locked seats
+  const availableSeats = totalSeats - bookedCount - lockedCount;
 
   return {
     ...trip,
     id: trip._id,
     availableSeats,
     seatAvailability,
+    seatStats: {
+      total: totalSeats,
+      booked: bookedCount,
+      locked: lockedCount,
+      available: availableSeats,
+    },
     policies: {
       cancellation: 'Free cancellation up to 24 hours before departure',
       modification: 'Free modification up to 12 hours before departure',
       refund: 'Full refund for cancellations made 24+ hours before departure',
     },
+  };
+};
+
+/**
+ * Get interactive seat map with real-time availability
+ * Optimized for seat selection UI
+ */
+const getSeatMap = async (tripId: mongoose.Types.ObjectId, sessionId?: string) => {
+  const trip = await Trip.findById(tripId)
+    .populate({
+      path: 'bus',
+      select: 'busNumber busType totalSeats seatMap',
+    })
+    .select('bookedSeats pricePerSeat seatPricing')
+    .lean();
+
+  if (!trip) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'Trip not found');
+  }
+
+  const bus = trip.bus as any;
+  if (!bus?.seatMap?.seats) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'Seat map not available for this trip');
+  }
+
+  // Get all active locks
+  const lockedSeats = await SeatLock.find({
+    trip: tripId,
+    expiresAt: { $gt: new Date() },
+  })
+    .select('seatNumbers sessionId expiresAt')
+    .lean();
+
+  // Group locked seats by session
+  const locksBySession = new Map<string, { seats: string[]; expiresAt: Date }>();
+  lockedSeats.forEach((lock) => {
+    if (!locksBySession.has(lock.sessionId)) {
+      locksBySession.set(lock.sessionId, { seats: [], expiresAt: lock.expiresAt });
+    }
+    locksBySession.get(lock.sessionId)!.seats.push(...lock.seatNumbers);
+  });
+
+  const allLockedSeats = lockedSeats.flatMap((lock) => lock.seatNumbers);
+
+  // Build seat map with status
+  const seats = bus.seatMap.seats.map((seat: any) => {
+    const isBooked = trip.bookedSeats?.includes(seat.seatNumber);
+    const isLockedByOthers =
+      allLockedSeats.includes(seat.seatNumber) &&
+      (!sessionId || !locksBySession.get(sessionId)?.seats.includes(seat.seatNumber));
+    const isLockedByMe = sessionId ? locksBySession.get(sessionId)?.seats.includes(seat.seatNumber) : false;
+
+    // Get price from seatPricing map if exists, otherwise use base price
+    const basePrice = trip.pricePerSeat;
+    const seatPrice = trip.seatPricing?.get(seat.seatNumber) || basePrice;
+
+    let status: 'available' | 'booked' | 'locked' | 'selected';
+    if (isBooked) {
+      status = 'booked';
+    } else if (isLockedByMe) {
+      status = 'selected';
+    } else if (isLockedByOthers) {
+      status = 'locked';
+    } else {
+      status = 'available';
+    }
+
+    return {
+      seatNumber: seat.seatNumber,
+      row: seat.row,
+      column: seat.column,
+      seatType: seat.seatType,
+      position: seat.position,
+      status,
+      price: seatPrice,
+      selectable: status === 'available' || status === 'selected',
+    };
+  });
+
+  // Get my lock expiration if exists
+  const myLockInfo = sessionId ? locksBySession.get(sessionId) : null;
+
+  return {
+    tripId: trip._id,
+    busType: bus.busType,
+    layout: {
+      rows: bus.seatMap.rows,
+      columns: bus.seatMap.columns,
+      name: bus.seatMap.name,
+    },
+    seats,
+    stats: {
+      total: bus.totalSeats,
+      booked: trip.bookedSeats?.length || 0,
+      locked: new Set(allLockedSeats).size,
+      available: bus.totalSeats - (trip.bookedSeats?.length || 0) - new Set(allLockedSeats).size,
+    },
+    mySelection: myLockInfo
+      ? {
+          seats: myLockInfo.seats,
+          expiresAt: myLockInfo.expiresAt,
+          remainingSeconds: Math.max(0, Math.floor((myLockInfo.expiresAt.getTime() - Date.now()) / 1000)),
+        }
+      : null,
   };
 };
 
@@ -444,4 +570,5 @@ export default {
   searchTripsByRoute,
   updateSeatPricing,
   getTripDetails,
+  getSeatMap,
 };

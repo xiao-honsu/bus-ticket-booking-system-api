@@ -21,6 +21,8 @@ router
 
 router.route('/:tripId/details').get(validate(tripValidation.getTrip), tripController.getTripDetails);
 
+router.route('/:tripId/seat-map').get(validate(tripValidation.getTrip), tripController.getSeatMap);
+
 router.route('/:tripId/seatpricing').patch(auth('manageTrips'), tripController.updateSeatPricing);
 
 export default router;

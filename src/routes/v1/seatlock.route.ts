@@ -11,6 +11,10 @@ router.route('/release').post(validate(seatLockValidation.releaseLocks), seatLoc
 
 router.route('/extend').post(validate(seatLockValidation.extendLocks), seatLockController.extendLocks);
 
+router
+  .route('/check-availability')
+  .post(validate(seatLockValidation.checkAvailability), seatLockController.checkAvailability);
+
 router.route('/:tripId').get(validate(seatLockValidation.getLockedSeats), seatLockController.getLockedSeats);
 
 export default router;

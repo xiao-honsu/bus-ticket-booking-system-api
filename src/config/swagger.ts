@@ -106,7 +106,9 @@ Public endpoints (search, locations) are accessible without authentication.
       LocationSuggestion: {
         type: 'object',
         properties: {
-          name: { type: 'string', example: 'Hồ Chí Minh' },
+          city: { type: 'string', example: 'Hồ Chí Minh', description: 'City name' },
+          state: { type: 'string', example: 'Hồ Chí Minh', description: 'State/province name' },
+          displayName: { type: 'string', example: 'Hồ Chí Minh, Hồ Chí Minh', description: 'Formatted display string' },
           type: {
             type: 'string',
             enum: ['origin', 'destination', 'both'],

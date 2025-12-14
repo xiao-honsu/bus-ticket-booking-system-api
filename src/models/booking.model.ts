@@ -12,13 +12,15 @@ export interface IPassenger {
 }
 
 export interface IRefund {
-  refundAmount: number;
-  refundPercentage: number;
+  amount: number;
+  refundAmount?: number;
+  refundPercentage?: number;
   status: 'pending' | 'processing' | 'completed' | 'failed';
   reason?: string;
   refundReference?: string;
   gatewayResponse?: any;
   processedAt?: Date;
+  requestedAt?: Date;
 }
 
 export interface IPayment {
@@ -75,6 +77,11 @@ export interface IBooking extends Document {
   payment: IPayment;
   modifications: IModification[];
   tripSnapshot: ITripSnapshot;
+  // Email notification tracking
+  reminderSent24h?: boolean;
+  reminderSent2h?: boolean;
+  confirmationEmailSent?: boolean;
+  cancellationEmailSent?: boolean;
 }
 
 export interface IBookingModel extends Model<IBooking>, PaginateModel<IBooking> {}
@@ -270,6 +277,23 @@ const bookingSchema = new mongoose.Schema<IBooking>(
       operatorName: String,
       busPlateNumber: String,
     },
+    // Email notification tracking
+    reminderSent24h: {
+      type: Boolean,
+      default: false,
+    },
+    reminderSent2h: {
+      type: Boolean,
+      default: false,
+    },
+    confirmationEmailSent: {
+      type: Boolean,
+      default: false,
+    },
+    cancellationEmailSent: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,
@@ -298,6 +322,10 @@ bookingSchema.index({ guestEmail: 1, createdAt: -1 });
 bookingSchema.index({ trip: 1, status: 1 });
 bookingSchema.index({ 'payment.paymentReference': 1 }, { unique: true, sparse: true });
 bookingSchema.index({ 'payment.status': 1, createdAt: -1 });
+
+// Reminder notification queries
+bookingSchema.index({ status: 1, reminderSent24h: 1, 'trip.departureTime': 1 });
+bookingSchema.index({ status: 1, reminderSent2h: 1, 'trip.departureTime': 1 });
 
 // Admin dashboard queries
 bookingSchema.index({ status: 1, createdAt: -1 });
