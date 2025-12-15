@@ -1,11 +1,20 @@
 import httpStatus from 'http-status';
-import { Request, Response, NextFunction } from 'express';
+import { Request, Response, NextFunction, CookieOptions } from 'express';
 import passport from 'passport';
 import catchAsync from '../utils/catchAsync';
 import { authService, userService, tokenService, emailService } from '../services';
 import config from '../config/config';
 import ApiError from '@/utils/ApiError';
 import { IUser } from '@/models/user.model';
+import { getCookieDomain } from '@/utils/cookies.helper';
+
+const cookieOptions: CookieOptions = {
+  httpOnly: true,
+  secure: config.env === 'production',
+  sameSite: 'lax',
+  domain: getCookieDomain(config.frontendUrl),
+  path: '/', // Explicit path
+};
 
 const logout = catchAsync(async (req: Request, res: Response) => {
   const refreshToken = req.cookies?.refreshToken || req.body?.refreshToken;
@@ -15,10 +24,10 @@ const logout = catchAsync(async (req: Request, res: Response) => {
   }
 
   // Clear all auth cookies
-  res.clearCookie('refreshToken', {
-    httpOnly: true,
-    secure: config.env === 'production',
-    sameSite: config.env === 'production' ? 'none' : 'lax',
+  res.clearCookie('refreshToken', cookieOptions);
+  res.clearCookie('userRole', {
+    ...cookieOptions,
+    httpOnly: false, // Matches how it was set
   });
 
   res.json({
@@ -30,7 +39,7 @@ const logout = catchAsync(async (req: Request, res: Response) => {
 
 const refreshTokens = catchAsync(async (req: Request, res: Response) => {
   // Get refresh token from httpOnly cookie (preferred) or body (fallback)
-  const refreshToken = req.cookies.refreshToken || req.body.refreshToken;
+  const refreshToken = req.cookies?.refreshToken || req.body?.refreshToken;
 
   if (!refreshToken) {
     throw new ApiError(httpStatus.UNAUTHORIZED, 'Refresh token not found');
@@ -40,12 +49,7 @@ const refreshTokens = catchAsync(async (req: Request, res: Response) => {
 
   // Only update refreshToken in httpOnly cookie
   // accessToken is returned in response body for client-side memory storage
-  res.cookie('refreshToken', tokens.refresh.token, {
-    httpOnly: true,
-    secure: config.env === 'production',
-    sameSite: config.env === 'production' ? 'none' : 'lax',
-    maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-  });
+  res.cookie('refreshToken', tokens.refresh.token, cookieOptions);
 
   res.json({
     code: httpStatus.OK,
@@ -144,26 +148,6 @@ const getCurrentUser = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-const googleCallback = catchAsync(async (req: Request, res: Response) => {
-  const user = req.user as IUser;
-  if (!user) {
-    return res.redirect(`${config.frontendUrl}/auth/login?error=oauth_no_user`);
-  }
-  const tokens = await tokenService.generateAuthTokens(user._id);
-
-  // Set refreshToken in httpOnly cookie (secure, not accessible by JS)
-  res.cookie('refreshToken', tokens.refresh.token, {
-    httpOnly: true,
-    secure: config.env === 'production',
-    sameSite: config.env === 'production' ? 'none' : 'lax',
-    maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-  });
-
-  // Redirect to frontend with only access token in URL
-  const redirectUrl = `${config.frontendUrl}/auth/callback?token=${tokens.access.token}`;
-  res.redirect(redirectUrl);
-});
-
 // New Passport-based registration controller
 const registerWithPassport = (req: Request, res: Response, next: NextFunction): void => {
   passport.authenticate('local-register', { session: false }, async (err: any, user: any, info: any) => {
@@ -249,23 +233,10 @@ const loginWithPassport = (req: Request, res: Response, next: NextFunction): voi
       const tokens = await tokenService.generateAuthTokens(user._id);
 
       // Set refreshToken in httpOnly cookie (secure, not accessible by JS)
-      res.cookie('refreshToken', tokens.refresh.token, {
-        httpOnly: true,
-        secure: config.env === 'production',
-        sameSite: config.env === 'production' ? 'none' : 'lax',
-        maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-      });
-
-      // Set userRole in non-httpOnly cookie (for middleware access control)
-      // This is safe because:
-      // 1. Backend sets it, client cannot fake
-      // 2. Middleware validates against backend token
-      // 3. Only used for routing, not authorization
+      res.cookie('refreshToken', tokens.refresh.token, cookieOptions);
       res.cookie('userRole', user.role, {
-        httpOnly: false, // Middleware needs to read this
-        secure: config.env === 'production',
-        sameSite: config.env === 'production' ? 'none' : 'lax',
-        maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+        ...cookieOptions,
+        httpOnly: false, // Accessible by JS
       });
 
       return res.json({
@@ -293,11 +264,10 @@ const googleCallbackWithCookies = catchAsync(async (req: Request, res: Response)
   const tokens = await tokenService.generateAuthTokens(user._id);
 
   // Set refreshToken in httpOnly cookie (secure, not accessible by JS)
-  res.cookie('refreshToken', tokens.refresh.token, {
-    httpOnly: true,
-    secure: config.env === 'production',
-    sameSite: config.env === 'production' ? 'none' : 'lax',
-    maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+  res.cookie('refreshToken', tokens.refresh.token, cookieOptions);
+  res.cookie('userRole', user.role, {
+    ...cookieOptions,
+    httpOnly: false, // Accessible by JS
   });
 
   // Redirect with accessToken in URL (will be stored in memory)
@@ -360,7 +330,6 @@ const authController = {
   resetPassword,
   verifyEmail,
   getCurrentUser,
-  googleCallback,
   registerWithPassport,
   loginWithPassport,
   googleCallbackWithCookies,
