@@ -3,7 +3,14 @@ import config from '../config/config';
 import logger from '../config/logger';
 import fs from 'fs';
 import path from 'path';
-const transport = nodemailer.createTransport(config.email.smtp);
+const transport = nodemailer.createTransport({
+  ...config.email.smtp,
+  connectionTimeout: 10000, // 10 seconds
+  greetingTimeout: 10000,
+  socketTimeout: 30000, // 30 seconds
+  logger: config.env === 'development',
+  debug: config.env === 'development',
+});
 
 /* istanbul ignore next */
 if (config.env !== 'test') {
@@ -29,7 +36,14 @@ const sendEmail = async (to: string, subject: string, html: string): Promise<voi
     subject,
     html,
   };
-  await transport.sendMail(msg);
+
+  try {
+    await transport.sendMail(msg);
+    logger.info(`Email sent successfully to ${to}`);
+  } catch (error: any) {
+    logger.error(`Failed to send email to ${to}:`, error);
+    throw new Error(`Email delivery failed: ${error.message}`);
+  }
 };
 
 /**
@@ -200,7 +214,8 @@ const sendResetPasswordEmail = async (to: string, token: string): Promise<void> 
 
   // Use frontend URL for password reset
   const frontendUrl = config.frontendUrl || 'http://localhost:3001';
-  const resetPasswordUrl = `${frontendUrl}/auth/reset-password?token=${encodeURIComponent(token)}`;
+  // const resetPasswordUrl = `${frontendUrl}/auth/reset-password?token=${encodeURIComponent(token)}`;
+  const resetPasswordUrl = new URL(`/auth/reset-password?token=${encodeURIComponent(token)}`, frontendUrl).toString();
 
   const html = loadTemplate('reset-password', {
     resetPasswordUrl,

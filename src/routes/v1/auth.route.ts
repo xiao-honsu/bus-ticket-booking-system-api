@@ -52,7 +52,7 @@ router.get('/google/callback', (req: Request, res: Response, next: NextFunction)
     'google',
     {
       session: false,
-      failureRedirect: `${config.frontendUrl}/auth/login?error=oauth_failed`,
+      failureRedirect: new URL('/auth/login?error=oauth_failed', config.frontendUrl).toString(),
     },
     async (err: any, user: any, info: any) => {
       if (err) {
