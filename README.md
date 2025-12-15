@@ -334,7 +334,7 @@ Base URL: `http://localhost:4000/v1`
 - `POST /v1/auth/register` - Đăng ký user mới
 - `POST /v1/auth/login` - Đăng nhập
 - `POST /v1/auth/logout` - Đăng xuất
-- `POST /v1/auth/refresh-tokens` - Refresh access token
+- `POST /v1/auth/refresh` - Refresh access token
 - `POST /v1/auth/forgot-password` - Quên mật khẩu
 - `POST /v1/auth/reset-password` - Reset mật khẩu
 - `POST /v1/auth/send-verification-email` - Gửi email xác thực
@@ -589,7 +589,7 @@ POST /v1/chatbot/messages
 1. Register → POST /v1/auth/register
 2. Get access token (30 min) + refresh token (30 days)
 3. Use access token → Authorization: Bearer <token>
-4. When expired → POST /v1/auth/refresh-tokens
+4. When expired → POST /v1/auth/refresh
 5. Get new access token + refresh token
 6. Logout → POST /v1/auth/logout (invalidate refresh token)
 ```

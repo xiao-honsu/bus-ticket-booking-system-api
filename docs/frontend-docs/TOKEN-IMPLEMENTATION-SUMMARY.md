@@ -3,31 +3,36 @@
 ## ✅ What Was Implemented
 
 ### 1. **Automatic Token Refresh** (`api.ts`)
+
 - ✅ Intercepts 401 errors automatically
-- ✅ Calls `/auth/refresh-tokens` with refreshToken
+- ✅ Calls `/auth/refresh` with refreshToken
 - ✅ Updates Redux state with new tokens
 - ✅ Updates cookies with new tokens
 - ✅ Retries original failed request
 - ✅ Logs out user if refresh fails
 
 ### 2. **Mutex Concurrency Control**
+
 - ✅ Installed `async-mutex` package
 - ✅ Prevents multiple simultaneous refresh calls
 - ✅ Other requests wait for ongoing refresh
 - ✅ All requests retry after successful refresh
 
 ### 3. **Enhanced Token Storage**
+
 - ✅ Access token: 30 minutes (was 7 days)
 - ✅ Refresh token: 30 days (properly stored now)
 - ✅ Both stored in Redux + Cookies
 - ✅ Proper cookie expiration times
 
 ### 4. **Updated Forms**
+
 - ✅ LoginForm stores refreshToken in cookies
 - ✅ RegisterForm stores refreshToken in cookies
 - ✅ Consistent cookie lifetime across forms
 
 ### 5. **Documentation**
+
 - ✅ Comprehensive TOKEN-HANDLING-GUIDE.md
 - ✅ Flow diagrams
 - ✅ Troubleshooting guide
@@ -38,11 +43,13 @@
 ## 🔄 How It Works
 
 ### Normal Flow
+
 ```
 User Request → API → Success → Data Returned
 ```
 
 ### Token Expired Flow
+
 ```
 User Request → API → 401 Error
     ↓
@@ -50,7 +57,7 @@ Interceptor Catches 401
     ↓
 Acquire Mutex Lock
     ↓
-Call /auth/refresh-tokens
+Call /auth/refresh
     ↓
 Get New Tokens
     ↓
@@ -64,6 +71,7 @@ Success → Data Returned
 ```
 
 ### Multiple Concurrent Requests
+
 ```
 Request A → 401 → Refreshing (acquires mutex)
 Request B → 401 → Waiting for mutex
@@ -132,6 +140,7 @@ All succeed
 ## 🔒 Security Features
 
 ### Implemented
+
 - ✅ Short-lived access tokens (30 min)
 - ✅ Tokens stored in memory (Redux) + cookies
 - ✅ Automatic logout on refresh failure
@@ -139,6 +148,7 @@ All succeed
 - ✅ Clear session on logout
 
 ### Production Recommendations
+
 - ⚠️ Use httpOnly cookies (backend implementation)
 - ⚠️ Add Secure and SameSite flags
 - ⚠️ Implement CSRF protection
@@ -150,6 +160,7 @@ All succeed
 ## 🐛 Troubleshooting
 
 ### Not Refreshing?
+
 ```typescript
 // Check Redux state
 console.log(store.getState().auth);
@@ -163,11 +174,13 @@ console.log('Refresh Token:', refreshToken);
 ```
 
 ### Infinite Loop?
-- Ensure `/auth/refresh-tokens` doesn't require auth header
+
+- Ensure `/auth/refresh` doesn't require auth header
 - Check backend returns proper tokens structure
 - Verify mutex is imported correctly
 
 ### Tokens Out of Sync?
+
 - Clear cookies and Redux state
 - Logout and login again
 - Check cookie expiration times
@@ -176,22 +189,24 @@ console.log('Refresh Token:', refreshToken);
 
 ## 📊 Token Lifetimes
 
-| Token Type | Lifetime | Storage | Purpose |
-|------------|----------|---------|---------|
-| Access Token | 30 minutes | Redux + Cookie | API authentication |
-| Refresh Token | 30 days | Redux + Cookie | Get new access tokens |
-| User Role | 30 days | Cookie | Middleware routing |
+| Token Type    | Lifetime   | Storage        | Purpose               |
+| ------------- | ---------- | -------------- | --------------------- |
+| Access Token  | 30 minutes | Redux + Cookie | API authentication    |
+| Refresh Token | 30 days    | Redux + Cookie | Get new access tokens |
+| User Role     | 30 days    | Cookie         | Middleware routing    |
 
 ---
 
 ## 🚀 Quick Start
 
 ### For Users
+
 1. Login normally
 2. Tokens refresh automatically when needed
 3. No action required!
 
 ### For Developers
+
 1. Tokens automatically refresh on 401 errors
 2. Check `TOKEN-HANDLING-GUIDE.md` for details
 3. Monitor console for refresh logs (if debug enabled)
@@ -201,22 +216,23 @@ console.log('Refresh Token:', refreshToken);
 ## 📝 Key Code Snippets
 
 ### Automatic Refresh Logic
+
 ```typescript
 // In api.ts
 const baseQueryWithReauth = async (args, api, extraOptions) => {
   let result = await baseQuery(args, api, extraOptions);
-  
+
   if (result.error && result.error.status === 401) {
     // Acquire mutex
     const release = await mutex.acquire();
     try {
       // Refresh token
       const refreshResult = await baseQuery({
-        url: '/auth/refresh-tokens',
+        url: '/auth/refresh',
         method: 'POST',
         body: { refreshToken }
       }, api, extraOptions);
-      
+
       if (refreshResult.data) {
         // Update tokens
         api.dispatch(setCredentials({...}));
@@ -235,6 +251,7 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
 ```
 
 ### Token Storage
+
 ```typescript
 // Access token - 30 minutes
 document.cookie = `token=${token}; path=/; max-age=${60 * 30}`;

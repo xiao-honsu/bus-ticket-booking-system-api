@@ -20,7 +20,7 @@ router.post('/register', authLimiter, validate(authValidation.register), authCon
 router.post('/login', authLimiter, validate(authValidation.login), authController.loginWithPassport);
 
 router.post('/logout', validate(authValidation.logout), authController.logout);
-router.post('/refresh-tokens', validate(authValidation.refreshTokens), authController.refreshTokens);
+router.post('/refresh', validate(authValidation.refreshTokens), authController.refreshTokens);
 router.post('/forgot-password', validate(authValidation.forgotPassword), authController.forgotPassword);
 router.post('/reset-password', validate(authValidation.resetPassword), authController.resetPassword);
 router.post('/verify-email', validate(authValidation.verifyEmail), authController.verifyEmail);
@@ -42,43 +42,43 @@ router.get(
   })
 );
 
-router.get('/google/callback', (req: Request, res: Response, next: NextFunction) => {
-  // FIX: Decode authorization code if it's URL-encoded
-  // Google trả về code bị encode (%2F thay vì /), cần decode trước khi gửi lên Google
-  if (req.query.code && typeof req.query.code === 'string') {
-    console.log('Raw code:', req.query.code);
-    req.query.code = decodeURIComponent(req.query.code);
-    console.log('Decoded code:', req.query.code);
-  }
+// router.get('/google/callback', (req: Request, res: Response, next: NextFunction) => {
+//   // FIX: Decode authorization code if it's URL-encoded
+//   // Google trả về code bị encode (%2F thay vì /), cần decode trước khi gửi lên Google
+//   if (req.query.code && typeof req.query.code === 'string') {
+//     console.log('Raw code:', req.query.code);
+//     req.query.code = decodeURIComponent(req.query.code);
+//     console.log('Decoded code:', req.query.code);
+//   }
 
-  passport.authenticate(
-    'google',
-    {
-      session: false,
-      failureRedirect: `${config.frontendUrl}/auth/login?error=oauth_failed`,
-    },
-    async (err: any, user: any, info: any) => {
-      if (err) {
-        console.error('Google OAuth error:', err);
-        return res.redirect(
-          `${config.frontendUrl}/auth/login?error=oauth_error&message=${encodeURIComponent(err.message || 'Authentication failed')}`
-        );
-      }
+//   passport.authenticate(
+//     'google',
+//     {
+//       session: false,
+//       failureRedirect: `${config.frontendUrl}/auth/login?error=oauth_failed`,
+//     },
+//     async (err: any, user: any, info: any) => {
+//       if (err) {
+//         console.error('Google OAuth error:', err);
+//         return res.redirect(
+//           `${config.frontendUrl}/auth/login?error=oauth_error&message=${encodeURIComponent(err.message || 'Authentication failed')}`
+//         );
+//       }
 
-      if (!user) {
-        console.error('Google OAuth - no user returned:', info);
-        return res.redirect(`${config.frontendUrl}/auth/login?error=oauth_no_user`);
-      }
+//       if (!user) {
+//         console.error('Google OAuth - no user returned:', info);
+//         return res.redirect(`${config.frontendUrl}/auth/login?error=oauth_no_user`);
+//       }
 
-      // User authenticated successfully, call controller
-      req.user = user;
-      return authController.googleCallback(req, res, next);
-    }
-  )(req, res, next);
-});
+//       // User authenticated successfully, call controller
+//       req.user = user;
+//       return authController.googleCallback(req, res, next);
+//     }
+//   )(req, res, next);
+// });
 
 // New Google OAuth callback with httpOnly cookies
-router.get('/google/callback-v2', (req: Request, res: Response, next: NextFunction) => {
+router.get('/google/callback', (req: Request, res: Response, next: NextFunction) => {
   if (req.query.code && typeof req.query.code === 'string') {
     req.query.code = decodeURIComponent(req.query.code);
   }

@@ -147,7 +147,7 @@ describe('Auth API - Integration Tests', () => {
     });
   });
 
-  describe('POST /v1/auth/refresh-tokens', () => {
+  describe('POST /v1/auth/refresh', () => {
     it('should refresh tokens with valid refresh token', async () => {
       // Register and login
       const registerRes = await request(app).post('/api/v1/auth/register').send({
@@ -159,7 +159,7 @@ describe('Auth API - Integration Tests', () => {
       const refreshToken = registerRes.body.tokens.refresh.token;
 
       // Refresh tokens
-      const res = await request(app).post('/api/v1/auth/refresh-tokens').send({ refreshToken }).expect(200);
+      const res = await request(app).post('/api/v1/auth/refresh').send({ refreshToken }).expect(200);
 
       expect(res.body.access).toBeDefined();
       expect(res.body.refresh).toBeDefined();
@@ -168,11 +168,11 @@ describe('Auth API - Integration Tests', () => {
     });
 
     it('should return 401 with invalid refresh token', async () => {
-      await request(app).post('/api/v1/auth/refresh-tokens').send({ refreshToken: 'invalid-token' }).expect(401);
+      await request(app).post('/api/v1/auth/refresh').send({ refreshToken: 'invalid-token' }).expect(401);
     });
 
     it('should return 400 if refresh token is missing', async () => {
-      await request(app).post('/api/v1/auth/refresh-tokens').send({}).expect(400);
+      await request(app).post('/api/v1/auth/refresh').send({}).expect(400);
     });
   });
 
@@ -226,7 +226,7 @@ describe('Auth API - Integration Tests', () => {
 
       // 3. Refresh tokens
       const refreshToken = loginRes.body.tokens.refresh.token;
-      const refreshRes = await request(app).post('/api/v1/auth/refresh-tokens').send({ refreshToken }).expect(200);
+      const refreshRes = await request(app).post('/api/v1/auth/refresh').send({ refreshToken }).expect(200);
 
       expect(refreshRes.body.access.token).toBeDefined();
 

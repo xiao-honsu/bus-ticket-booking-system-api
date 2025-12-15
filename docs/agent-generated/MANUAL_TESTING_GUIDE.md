@@ -1,4 +1,5 @@
 # Manual Testing Guide - Bus Ticket Booking System
+
 ## Phase 3: Comprehensive Testing
 
 **Date:** November 26, 2025  
@@ -10,6 +11,7 @@
 ## Prerequisites
 
 Before starting tests:
+
 - [ ] Backend server running (`npm run dev` in backend directory)
 - [ ] MongoDB connected and running
 - [ ] Environment variables configured (.env file)
@@ -29,11 +31,11 @@ Run this script in MongoDB or use the register endpoint then manually change rol
 ```javascript
 // In MongoDB shell
 db.users.insertOne({
-  name: "Admin User",
-  email: "admin@test.com",
-  password: "$2a$10$...", // bcrypt hash of "Admin123!"
-  role: "admin",
-  isEmailVerified: true
+  name: 'Admin User',
+  email: 'admin@test.com',
+  password: '$2a$10$...', // bcrypt hash of "Admin123!"
+  role: 'admin',
+  isEmailVerified: true,
 });
 ```
 
@@ -53,6 +55,7 @@ db.users.insertOne({
 **Endpoint:** `POST /v1/auth/register`
 
 **Request Body:**
+
 ```json
 {
   "name": "Test User",
@@ -62,13 +65,15 @@ db.users.insertOne({
 ```
 
 **Expected Results:**
+
 - ✅ Status: 201 Created
 - ✅ Response contains: user object and tokens
 - ✅ Email verification email sent (check logs if SMTP configured)
 - ✅ User created in database with role "user"
 
 **Actual Results:**
-- Status: ___
+
+- Status: \_\_\_
 - User created: ☐ Yes ☐ No
 - Tokens received: ☐ Yes ☐ No
 - Email sent: ☐ Yes ☐ No
@@ -80,6 +85,7 @@ db.users.insertOne({
 **Endpoint:** `POST /v1/auth/login`
 
 **Request Body:**
+
 ```json
 {
   "email": "testuser@example.com",
@@ -88,12 +94,14 @@ db.users.insertOne({
 ```
 
 **Expected Results:**
+
 - ✅ Status: 200 OK
 - ✅ Response contains: user object and tokens
 - ✅ Access token and refresh token returned
 
 **Actual Results:**
-- Status: ___
+
+- Status: \_\_\_
 - Tokens received: ☐ Yes ☐ No
 
 ---
@@ -103,6 +111,7 @@ db.users.insertOne({
 **Endpoint:** `POST /v1/auth/login`
 
 **Request Body:**
+
 ```json
 {
   "email": "testuser@example.com",
@@ -111,20 +120,23 @@ db.users.insertOne({
 ```
 
 **Expected Results:**
+
 - ✅ Status: 401 Unauthorized
 - ✅ Error message: "Incorrect email or password"
 
 **Actual Results:**
-- Status: ___
-- Error message: ___
+
+- Status: \_\_\_
+- Error message: \_\_\_
 
 ---
 
 ### Test 1.4: Token Refresh
 
-**Endpoint:** `POST /v1/auth/refresh-tokens`
+**Endpoint:** `POST /v1/auth/refresh`
 
 **Request Body:**
+
 ```json
 {
   "refreshToken": "<refresh_token_from_login>"
@@ -132,11 +144,13 @@ db.users.insertOne({
 ```
 
 **Expected Results:**
+
 - ✅ Status: 200 OK
 - ✅ New access token and refresh token returned
 
 **Actual Results:**
-- Status: ___
+
+- Status: \_\_\_
 - New tokens received: ☐ Yes ☐ No
 
 ---
@@ -148,11 +162,13 @@ db.users.insertOne({
 **Headers:** None (no Authorization header)
 
 **Expected Results:**
+
 - ✅ Status: 401 Unauthorized
 - ✅ Error message about missing authentication
 
 **Actual Results:**
-- Status: ___
+
+- Status: \_\_\_
 - Blocked: ☐ Yes ☐ No
 
 ---
@@ -161,12 +177,14 @@ db.users.insertOne({
 
 **Endpoint:** `POST /v1/operators`
 
-**Headers:** 
+**Headers:**
+
 ```
 Authorization: Bearer <user_access_token>
 ```
 
 **Request Body:**
+
 ```json
 {
   "name": "Test Operator",
@@ -177,11 +195,13 @@ Authorization: Bearer <user_access_token>
 ```
 
 **Expected Results:**
+
 - ✅ Status: 403 Forbidden
 - ✅ Error message about insufficient permissions
 
 **Actual Results:**
-- Status: ___
+
+- Status: \_\_\_
 - Blocked: ☐ Yes ☐ No
 
 ---
@@ -190,12 +210,14 @@ Authorization: Bearer <user_access_token>
 
 **Endpoint:** `POST /v1/operators`
 
-**Headers:** 
+**Headers:**
+
 ```
 Authorization: Bearer <admin_access_token>
 ```
 
 **Request Body:**
+
 ```json
 {
   "name": "Test Operator",
@@ -207,11 +229,13 @@ Authorization: Bearer <admin_access_token>
 ```
 
 **Expected Results:**
+
 - ✅ Status: 201 Created
 - ✅ Operator created successfully
 
 **Actual Results:**
-- Status: ___
+
+- Status: \_\_\_
 - Operator created: ☐ Yes ☐ No
 
 ---
@@ -223,19 +247,22 @@ Authorization: Bearer <admin_access_token>
 **Endpoint:** `GET /v1/trips/search`
 
 **Query Parameters:**
+
 ```
 ?routeId=<route_id>&date=2025-12-01&originCity=Hanoi&destinationCity=Ho Chi Minh
 ```
 
 **Expected Results:**
+
 - ✅ Status: 200 OK
 - ✅ Returns list of available trips
 - ✅ No authentication required
 - ✅ Search history logged for authenticated users only
 
 **Actual Results:**
-- Status: ___
-- Trips returned: ___ trips
+
+- Status: \_\_\_
+- Trips returned: \_\_\_ trips
 - Works without auth: ☐ Yes ☐ No
 
 ---
@@ -245,6 +272,7 @@ Authorization: Bearer <admin_access_token>
 **Endpoint:** `POST /v1/seatlock/lock`
 
 **Request Body:**
+
 ```json
 {
   "tripId": "<trip_id>",
@@ -254,12 +282,14 @@ Authorization: Bearer <admin_access_token>
 ```
 
 **Expected Results:**
+
 - ✅ Status: 200 OK
 - ✅ Seats locked for 10 minutes
 - ✅ Returns lock information
 
 **Actual Results:**
-- Status: ___
+
+- Status: \_\_\_
 - Seats locked: ☐ Yes ☐ No
 
 ---
@@ -269,6 +299,7 @@ Authorization: Bearer <admin_access_token>
 **Endpoint:** `POST /v1/bookings/guest`
 
 **Request Body:**
+
 ```json
 {
   "trip": "<trip_id>",
@@ -292,6 +323,7 @@ Authorization: Bearer <admin_access_token>
 ```
 
 **Expected Results:**
+
 - ✅ Status: 201 Created
 - ✅ Booking created with status "pending"
 - ✅ Booking confirmation email sent to guestEmail
@@ -299,9 +331,10 @@ Authorization: Bearer <admin_access_token>
 - ✅ Seat locks released (if locking implemented)
 
 **Actual Results:**
-- Status: ___
-- Booking ID: ___
-- Booking status: ___
+
+- Status: \_\_\_
+- Booking ID: \_\_\_
+- Booking status: \_\_\_
 - Email sent: ☐ Yes ☐ No (check email logs)
 - Email received: ☐ Yes ☐ No
 
@@ -312,6 +345,7 @@ Authorization: Bearer <admin_access_token>
 **Endpoint:** `POST /v1/payments/create`
 
 **Request Body:**
+
 ```json
 {
   "bookingId": "<booking_id_from_previous_step>",
@@ -321,14 +355,16 @@ Authorization: Bearer <admin_access_token>
 ```
 
 **Expected Results:**
+
 - ✅ Status: 200 OK
 - ✅ Returns PayOS checkout URL
 - ✅ Payment order created
 
 **Actual Results:**
-- Status: ___
+
+- Status: \_\_\_
 - Checkout URL received: ☐ Yes ☐ No
-- Payment URL: ___
+- Payment URL: \_\_\_
 
 ---
 
@@ -337,12 +373,14 @@ Authorization: Bearer <admin_access_token>
 **Endpoint:** `GET /v1/payments/<paymentId>/status`
 
 **Expected Results:**
+
 - ✅ Status: 200 OK
 - ✅ Returns payment status (pending/paid/cancelled)
 
 **Actual Results:**
-- Status: ___
-- Payment status: ___
+
+- Status: \_\_\_
+- Payment status: \_\_\_
 
 ---
 
@@ -351,6 +389,7 @@ Authorization: Bearer <admin_access_token>
 **Endpoint:** `POST /v1/payments/webhook`
 
 **Request Body:** (Simulate PayOS webhook)
+
 ```json
 {
   "data": {
@@ -368,6 +407,7 @@ Authorization: Bearer <admin_access_token>
 ```
 
 **Expected Results:**
+
 - ✅ Status: 200 OK
 - ✅ Booking status updated to "confirmed"
 - ✅ Payment status updated to "paid"
@@ -375,9 +415,10 @@ Authorization: Bearer <admin_access_token>
 - ✅ Available seats decreased
 
 **Actual Results:**
-- Status: ___
-- Booking status after webhook: ___
-- Payment status: ___
+
+- Status: \_\_\_
+- Booking status after webhook: \_\_\_
+- Payment status: \_\_\_
 - Email sent: ☐ Yes ☐ No
 
 ---
@@ -387,6 +428,7 @@ Authorization: Bearer <admin_access_token>
 **Endpoint:** `POST /v1/bookings/guest`
 
 **Request Body:** (Try booking same seats as Test 2.3)
+
 ```json
 {
   "trip": "<same_trip_id>",
@@ -398,13 +440,15 @@ Authorization: Bearer <admin_access_token>
 ```
 
 **Expected Results:**
+
 - ✅ Status: 400 Bad Request
 - ✅ Error message: Seats already booked or not available
 - ✅ Booking NOT created
 
 **Actual Results:**
-- Status: ___
-- Error message: ___
+
+- Status: \_\_\_
+- Error message: \_\_\_
 - Prevented double booking: ☐ Yes ☐ No
 
 ---
@@ -416,6 +460,7 @@ Authorization: Bearer <admin_access_token>
 **Trigger:** Create any booking (guest or authenticated)
 
 **Email Check:**
+
 - [ ] Email received at guest/user email address
 - [ ] Subject line appropriate
 - [ ] Email contains:
@@ -429,6 +474,7 @@ Authorization: Bearer <admin_access_token>
 - [ ] Links work (if any)
 
 **Actual Results:**
+
 - Email received: ☐ Yes ☐ No
 - All details present: ☐ Yes ☐ No
 - Template looks good: ☐ Yes ☐ No
@@ -440,11 +486,13 @@ Authorization: Bearer <admin_access_token>
 **Endpoint:** `PATCH /v1/bookings/<booking_id>/cancel`
 
 **Headers:**
+
 ```
 Authorization: Bearer <user_access_token>
 ```
 
 **Request Body:**
+
 ```json
 {
   "reason": "Change of plans"
@@ -452,13 +500,15 @@ Authorization: Bearer <user_access_token>
 ```
 
 **Email Check:**
+
 - [ ] Cancellation email received
 - [ ] Contains booking details
 - [ ] Contains cancellation reason
 - [ ] Contains refund information (if applicable)
 
 **Actual Results:**
-- Status: ___
+
+- Status: \_\_\_
 - Booking cancelled: ☐ Yes ☐ No
 - Email sent: ☐ Yes ☐ No
 
@@ -471,11 +521,13 @@ Authorization: Bearer <user_access_token>
 **Endpoint:** `POST /v1/reviews`
 
 **Headers:**
+
 ```
 Authorization: Bearer <user_access_token>
 ```
 
 **Request Body:**
+
 ```json
 {
   "booking": "<completed_booking_id>",
@@ -487,12 +539,14 @@ Authorization: Bearer <user_access_token>
 ```
 
 **Expected Results:**
+
 - ✅ Status: 201 Created
 - ✅ Review created successfully
 - ✅ Can only review completed bookings
 
 **Actual Results:**
-- Status: ___
+
+- Status: \_\_\_
 - Review created: ☐ Yes ☐ No
 
 ---
@@ -504,11 +558,13 @@ Authorization: Bearer <user_access_token>
 **Request Body:** (Same trip as Test 4.1)
 
 **Expected Results:**
+
 - ✅ Status: 400 Bad Request
 - ✅ Error: Already reviewed this trip
 
 **Actual Results:**
-- Status: ___
+
+- Status: \_\_\_
 - Duplicate prevented: ☐ Yes ☐ No
 
 ---
@@ -518,13 +574,15 @@ Authorization: Bearer <user_access_token>
 **Endpoint:** `GET /v1/reviews?trip=<trip_id>`
 
 **Expected Results:**
+
 - ✅ Status: 200 OK
 - ✅ Returns list of reviews for the trip
 - ✅ Includes vote counts
 
 **Actual Results:**
-- Status: ___
-- Reviews returned: ___ reviews
+
+- Status: \_\_\_
+- Reviews returned: \_\_\_ reviews
 
 ---
 
@@ -533,11 +591,13 @@ Authorization: Bearer <user_access_token>
 **Endpoint:** `POST /v1/reviews/<review_id>/vote`
 
 **Headers:**
+
 ```
 Authorization: Bearer <different_user_token>
 ```
 
 **Request Body:**
+
 ```json
 {
   "voteType": "upvote"
@@ -545,12 +605,14 @@ Authorization: Bearer <different_user_token>
 ```
 
 **Expected Results:**
+
 - ✅ Status: 200 OK
 - ✅ Upvote count increased by 1
 - ✅ Cannot vote on own review
 
 **Actual Results:**
-- Status: ___
+
+- Status: \_\_\_
 - Vote recorded: ☐ Yes ☐ No
 
 ---
@@ -560,6 +622,7 @@ Authorization: Bearer <different_user_token>
 **Endpoint:** `POST /v1/reviews/<review_id>/vote`
 
 **Request Body:**
+
 ```json
 {
   "voteType": "downvote"
@@ -567,12 +630,14 @@ Authorization: Bearer <different_user_token>
 ```
 
 **Expected Results:**
+
 - ✅ Status: 200 OK
 - ✅ Upvote count decreased by 1
 - ✅ Downvote count increased by 1
 
 **Actual Results:**
-- Status: ___
+
+- Status: \_\_\_
 - Vote changed: ☐ Yes ☐ No
 
 ---
@@ -582,12 +647,14 @@ Authorization: Bearer <different_user_token>
 **Endpoint:** `DELETE /v1/reviews/<review_id>/vote`
 
 **Expected Results:**
+
 - ✅ Status: 200 OK
 - ✅ Downvote count decreased by 1
 - ✅ Vote removed
 
 **Actual Results:**
-- Status: ___
+
+- Status: \_\_\_
 - Vote removed: ☐ Yes ☐ No
 
 ---
@@ -599,6 +666,7 @@ Authorization: Bearer <different_user_token>
 **Endpoint:** `POST /v1/seatlock/lock`
 
 **Request Body:**
+
 ```json
 {
   "tripId": "<trip_id>",
@@ -608,14 +676,16 @@ Authorization: Bearer <different_user_token>
 ```
 
 **Expected Results:**
+
 - ✅ Status: 200 OK
 - ✅ Seats locked successfully
 - ✅ Expiry time set (10 minutes from now)
 
 **Actual Results:**
-- Status: ___
+
+- Status: \_\_\_
 - Seats locked: ☐ Yes ☐ No
-- Lock expiry: ___
+- Lock expiry: \_\_\_
 
 ---
 
@@ -624,12 +694,14 @@ Authorization: Bearer <different_user_token>
 **Endpoint:** `GET /v1/seatlock/trip/<trip_id>`
 
 **Expected Results:**
+
 - ✅ Status: 200 OK
 - ✅ Returns list of currently locked seats
 - ✅ Shows B1, B2 as locked
 
 **Actual Results:**
-- Status: ___
+
+- Status: \_\_\_
 - Locked seats shown: ☐ Yes ☐ No
 
 ---
@@ -641,11 +713,13 @@ Authorization: Bearer <different_user_token>
 **Request Body:** (Try to book B1, B2)
 
 **Expected Results:**
+
 - ✅ Status: 400 Bad Request
 - ✅ Error: Seats are currently locked
 
 **Actual Results:**
-- Status: ___
+
+- Status: \_\_\_
 - Booking prevented: ☐ Yes ☐ No
 
 ---
@@ -657,12 +731,14 @@ Authorization: Bearer <different_user_token>
 **Request Body:** (Book with correct sessionId that owns the lock)
 
 **Expected Results:**
+
 - ✅ Status: 201 Created
 - ✅ Booking created
 - ✅ Seat locks automatically released
 
 **Actual Results:**
-- Status: ___
+
+- Status: \_\_\_
 - Locks released: ☐ Yes ☐ No
 
 ---
@@ -670,15 +746,18 @@ Authorization: Bearer <different_user_token>
 ### Test 5.5: Lock Expiry
 
 **Manual Test:**
+
 1. Lock some seats
 2. Wait 10+ minutes
 3. Try to book those seats with different session
 
 **Expected Results:**
+
 - ✅ Locks expired automatically (TTL index)
 - ✅ Seats available for booking again
 
 **Actual Results:**
+
 - Locks expired: ☐ Yes ☐ No (check after 10 min)
 - Seats bookable: ☐ Yes ☐ No
 
@@ -691,11 +770,13 @@ Authorization: Bearer <different_user_token>
 **Endpoint:** `POST /v1/operators`
 
 **Headers:**
+
 ```
 Authorization: Bearer <admin_token>
 ```
 
 **Request Body:**
+
 ```json
 {
   "name": "VIP Bus Lines",
@@ -708,12 +789,14 @@ Authorization: Bearer <admin_token>
 ```
 
 **Expected Results:**
+
 - ✅ Status: 201 Created
 - ✅ Operator created
 
 **Actual Results:**
-- Status: ___
-- Operator ID: ___
+
+- Status: \_\_\_
+- Operator ID: \_\_\_
 
 ---
 
@@ -722,13 +805,15 @@ Authorization: Bearer <admin_token>
 **Endpoint:** `GET /v1/operators`
 
 **Expected Results:**
+
 - ✅ Status: 200 OK
 - ✅ No authentication required
 - ✅ Returns list of operators
 
 **Actual Results:**
-- Status: ___
-- Operators returned: ___ operators
+
+- Status: \_\_\_
+- Operators returned: \_\_\_ operators
 - Works without auth: ☐ Yes ☐ No
 
 ---
@@ -738,11 +823,13 @@ Authorization: Bearer <admin_token>
 **Endpoint:** `PATCH /v1/operators/<operator_id>`
 
 **Headers:**
+
 ```
 Authorization: Bearer <admin_token>
 ```
 
 **Request Body:**
+
 ```json
 {
   "phone": "0987654321"
@@ -750,11 +837,13 @@ Authorization: Bearer <admin_token>
 ```
 
 **Expected Results:**
+
 - ✅ Status: 200 OK
 - ✅ Operator updated
 
 **Actual Results:**
-- Status: ___
+
+- Status: \_\_\_
 - Operator updated: ☐ Yes ☐ No
 
 ---
@@ -764,16 +853,19 @@ Authorization: Bearer <admin_token>
 **Endpoint:** `DELETE /v1/operators/<operator_id>`
 
 **Headers:**
+
 ```
 Authorization: Bearer <user_token>
 ```
 
 **Expected Results:**
+
 - ✅ Status: 403 Forbidden
 - ✅ Deletion prevented
 
 **Actual Results:**
-- Status: ___
+
+- Status: \_\_\_
 - Access denied: ☐ Yes ☐ No
 
 ---
@@ -785,15 +877,18 @@ Authorization: Bearer <user_token>
 **Endpoint:** `GET /v1/trips/search?routeId=...&date=...&originCity=Hanoi&destinationCity=HCM`
 
 **Headers:**
+
 ```
 Authorization: Bearer <user_token>
 ```
 
 **Expected Results:**
+
 - ✅ Search executes successfully
 - ✅ Search history saved for authenticated user
 
 **Actual Results:**
+
 - Search works: ☐ Yes ☐ No
 - History logged: ☐ Check in next test
 
@@ -804,19 +899,22 @@ Authorization: Bearer <user_token>
 **Endpoint:** `GET /v1/users/search-history`
 
 **Headers:**
+
 ```
 Authorization: Bearer <user_token>
 ```
 
 **Expected Results:**
+
 - ✅ Status: 200 OK
 - ✅ Returns list of user's search history
 - ✅ Sorted by most recent first
 - ✅ Contains search from Test 7.1
 
 **Actual Results:**
-- Status: ___
-- History returned: ___ entries
+
+- Status: \_\_\_
+- History returned: \_\_\_ entries
 - Contains recent search: ☐ Yes ☐ No
 
 ---
@@ -828,10 +926,12 @@ Authorization: Bearer <user_token>
 **Headers:** None
 
 **Expected Results:**
+
 - ✅ Search works
 - ✅ No history saved (guest user)
 
 **Actual Results:**
+
 - Search works: ☐ Yes ☐ No
 
 ---
@@ -843,33 +943,39 @@ Authorization: Bearer <user_token>
 **Endpoint:** `PATCH /v1/routes/<route_id>/toggle-status`
 
 **Headers:**
+
 ```
 Authorization: Bearer <admin_token>
 ```
 
 **Expected Results:**
+
 - ✅ Status: 200 OK
 - ✅ isActive field toggled
 - ✅ If was true, now false (or vice versa)
 
 **Actual Results:**
-- Status: ___
+
+- Status: \_\_\_
 - isActive toggled: ☐ Yes ☐ No
-- New status: ___
+- New status: \_\_\_
 
 ---
 
 ### Test 8.2: Inactive Route Not in Search
 
-**Setup:** 
+**Setup:**
+
 1. Toggle a route to inactive (isActive = false)
 2. Search for trips on that route
 
 **Expected Results:**
+
 - ✅ Route not shown in search results
 - ✅ Trips on inactive routes not returned
 
 **Actual Results:**
+
 - Route hidden: ☐ Yes ☐ No
 
 ---
@@ -881,12 +987,14 @@ Authorization: Bearer <admin_token>
 **Endpoint:** `GET /v1/bookings/invalid-id-123`
 
 **Expected Results:**
+
 - ✅ Status: 400 Bad Request
 - ✅ Error message about invalid ID format
 
 **Actual Results:**
-- Status: ___
-- Error message: ___
+
+- Status: \_\_\_
+- Error message: \_\_\_
 
 ---
 
@@ -895,12 +1003,14 @@ Authorization: Bearer <admin_token>
 **Endpoint:** `GET /v1/bookings/507f1f77bcf86cd799439011`
 
 **Expected Results:**
+
 - ✅ Status: 404 Not Found
 - ✅ Error message: "Booking not found"
 
 **Actual Results:**
-- Status: ___
-- Error message: ___
+
+- Status: \_\_\_
+- Error message: \_\_\_
 
 ---
 
@@ -909,6 +1019,7 @@ Authorization: Bearer <admin_token>
 **Endpoint:** `POST /v1/bookings/guest`
 
 **Request Body:** (Missing guestEmail)
+
 ```json
 {
   "trip": "<trip_id>",
@@ -918,11 +1029,13 @@ Authorization: Bearer <admin_token>
 ```
 
 **Expected Results:**
+
 - ✅ Status: 400 Bad Request
 - ✅ Validation error about missing guestEmail
 
 **Actual Results:**
-- Status: ___
+
+- Status: \_\_\_
 - Validation works: ☐ Yes ☐ No
 
 ---
@@ -932,17 +1045,20 @@ Authorization: Bearer <admin_token>
 **Endpoint:** `GET /v1/users`
 
 **Headers:**
+
 ```
 Authorization: Bearer <expired_token>
 ```
 
 **Expected Results:**
+
 - ✅ Status: 401 Unauthorized
 - ✅ Error about expired token
 
 **Actual Results:**
-- Status: ___
-- Error message: ___
+
+- Status: \_\_\_
+- Error message: \_\_\_
 
 ---
 
@@ -951,6 +1067,7 @@ Authorization: Bearer <expired_token>
 ### Overall Results
 
 **Test Suites Completed:**
+
 - [ ] Authentication & Authorization (7 tests)
 - [ ] Guest Booking Flow (7 tests)
 - [ ] Email Notifications (2 tests)
@@ -963,32 +1080,32 @@ Authorization: Bearer <expired_token>
 
 **Total Tests:** 40 tests
 
-**Pass Rate:** ___ / 40 tests passed (___%)
+**Pass Rate:** **_ / 40 tests passed (_**%)
 
 ---
 
 ## Critical Issues Found
 
-| # | Test | Issue Description | Severity | Status |
-|---|------|-------------------|----------|--------|
-| 1 | | | | |
-| 2 | | | | |
-| 3 | | | | |
+| #   | Test | Issue Description | Severity | Status |
+| --- | ---- | ----------------- | -------- | ------ |
+| 1   |      |                   |          |        |
+| 2   |      |                   |          |        |
+| 3   |      |                   |          |        |
 
 ---
 
 ## Recommendations
 
-1. 
-2. 
-3. 
+1.
+2.
+3.
 
 ---
 
 ## Sign-off
 
-**Tester:** _______________  
-**Date:** _______________  
+**Tester:** **\*\***\_\_\_**\*\***  
+**Date:** **\*\***\_\_\_**\*\***  
 **Status:** ☐ All Tests Passed ☐ Issues Found ☐ Needs Retest
 
 ---

@@ -20,7 +20,7 @@ This document explains how accessToken and refreshToken are managed in the front
    - **Lifetime**: 30 days
    - **Purpose**: Obtain new access tokens without re-login
    - **Storage**: Redux state + Cookie
-   - **Transmission**: Request body to `/auth/refresh-tokens`
+   - **Transmission**: Request body to `/auth/refresh`
 
 ---
 
@@ -62,7 +62,7 @@ This document explains how accessToken and refreshToken are managed in the front
        │
        ▼
 ┌─────────────────────────────┐
-│  Call /auth/refresh-tokens  │
+│  Call /auth/refresh  │
 │  with refreshToken          │
 └──────┬──────────────────────┘
        │
@@ -100,9 +100,9 @@ const mutex = new Mutex();
 const baseQueryWithReauth: BaseQueryFn = async (args, api, extraOptions) => {
   // Wait for mutex
   await mutex.waitForUnlock();
-  
+
   let result = await baseQuery(args, api, extraOptions);
-  
+
   // Handle 401 errors
   if (result.error && result.error.status === 401) {
     if (!mutex.isLocked()) {
@@ -110,11 +110,11 @@ const baseQueryWithReauth: BaseQueryFn = async (args, api, extraOptions) => {
       try {
         // Refresh token logic
         const refreshResult = await baseQuery({
-          url: '/auth/refresh-tokens',
+          url: '/auth/refresh',
           method: 'POST',
           body: { refreshToken },
         }, api, extraOptions);
-        
+
         if (refreshResult.data) {
           // Update tokens and retry
           api.dispatch(setCredentials({...}));
@@ -132,12 +132,13 @@ const baseQueryWithReauth: BaseQueryFn = async (args, api, extraOptions) => {
       result = await baseQuery(args, api, extraOptions);
     }
   }
-  
+
   return result;
 };
 ```
 
 **Why Mutex?**
+
 - Prevents race conditions when multiple API calls fail simultaneously
 - Ensures only ONE refresh token request is made
 - Other requests wait for refresh to complete, then retry
@@ -149,8 +150,8 @@ const baseQueryWithReauth: BaseQueryFn = async (args, api, extraOptions) => {
 ```typescript
 interface AuthState {
   user: User | null;
-  token: string | null;          // Access token
-  refreshToken: string | null;   // Refresh token
+  token: string | null; // Access token
+  refreshToken: string | null; // Refresh token
   isAuthenticated: boolean;
   isLoading: boolean;
 }
@@ -190,20 +191,22 @@ document.cookie = `userRole=${user.role}; path=/; max-age=${60 * 60 * 24 * 30}`;
 
 ### Cookie Lifetimes
 
-| Cookie | Lifetime | Purpose |
-|--------|----------|---------|
-| `token` | 30 min | Current access token |
-| `refreshToken` | 30 days | Refresh token for getting new access tokens |
-| `userRole` | 30 days | Quick role check for middleware routing |
+| Cookie         | Lifetime | Purpose                                     |
+| -------------- | -------- | ------------------------------------------- |
+| `token`        | 30 min   | Current access token                        |
+| `refreshToken` | 30 days  | Refresh token for getting new access tokens |
+| `userRole`     | 30 days  | Quick role check for middleware routing     |
 
 ### Security Considerations
 
 **Current Implementation:**
+
 ```typescript
 document.cookie = `token=${value}; path=/; max-age=${seconds}`;
 ```
 
 **Production Enhancement:**
+
 ```typescript
 document.cookie = `token=${value}; path=/; max-age=${seconds}; Secure; SameSite=Strict`;
 ```
@@ -231,7 +234,7 @@ Interceptor detects 401
      ↓
 Lock mutex (prevent concurrent refreshes)
      ↓
-Call /auth/refresh-tokens
+Call /auth/refresh
      ↓
 Backend validates refresh token (200 OK)
      ↓
@@ -249,7 +252,7 @@ Data returned to user
 ```
 User → API Request → Backend (401)
      ↓
-Interceptor calls /auth/refresh-tokens
+Interceptor calls /auth/refresh
      ↓
 Backend returns 401 (refresh token expired)
      ↓
@@ -292,11 +295,12 @@ document.cookie = 'token=expired.token.here; path=/';
 
 // Make API call
 fetch('http://localhost:4000/api/v1/bookings', {
-  headers: { 'Authorization': 'Bearer expired.token.here' }
-})
+  headers: { Authorization: 'Bearer expired.token.here' },
+});
 ```
 
 **Expected Result:**
+
 - 401 error triggers refresh
 - New token obtained
 - Original request retries automatically
@@ -318,6 +322,7 @@ console.log('[Token Refresh] Refresh failed, logging out');
 ### Current Implementation
 
 ✅ **Implemented:**
+
 - Tokens stored in Redux (in-memory)
 - Tokens in cookies for SSR/middleware
 - Automatic refresh on 401
@@ -327,25 +332,29 @@ console.log('[Token Refresh] Refresh failed, logging out');
 ⚠️ **Production Enhancements Needed:**
 
 1. **HttpOnly Cookies** (Backend Implementation)
+
 ```typescript
 // Backend should set cookies instead of sending in response
 res.cookie('accessToken', token, {
   httpOnly: true,
   secure: true,
   sameSite: 'strict',
-  maxAge: 30 * 60 * 1000
+  maxAge: 30 * 60 * 1000,
 });
 ```
 
 2. **CSRF Protection**
+
 - Add CSRF tokens for state-changing operations
 - Use `SameSite=Strict` cookie attribute
 
 3. **Token Rotation**
+
 - Refresh token should rotate on each use
 - Backend invalidates old refresh token after issuing new one
 
 4. **Rate Limiting**
+
 - Limit refresh token requests per user
 - Prevent brute force attacks
 
@@ -451,16 +460,19 @@ res.cookie('accessToken', token, {
 ### Issue 1: Token Not Refreshing
 
 **Symptoms:**
+
 - User logged out after 30 minutes
 - No automatic refresh
 
 **Debug Steps:**
+
 1. Check browser console for errors
 2. Verify refreshToken exists in Redux state
-3. Check `/auth/refresh-tokens` endpoint response
+3. Check `/auth/refresh` endpoint response
 4. Verify mutex is working (no multiple refresh calls)
 
 **Solution:**
+
 ```typescript
 // Check Redux state
 console.log(store.getState().auth);
@@ -472,29 +484,34 @@ console.log(document.cookie);
 ### Issue 2: Infinite Refresh Loop
 
 **Symptoms:**
+
 - Continuous refresh token calls
 - App frozen
 
 **Causes:**
+
 - Backend returning 401 even for refresh endpoint
 - Mutex not working properly
 
 **Solution:**
-- Ensure `/auth/refresh-tokens` doesn't require auth header
+
+- Ensure `/auth/refresh` doesn't require auth header
 - Add breakpoint in baseQueryWithReauth to debug
 
 ### Issue 3: Tokens Out of Sync
 
 **Symptoms:**
+
 - Redux has token but cookies don't (or vice versa)
 
 **Solution:**
+
 ```typescript
 // Sync tokens on app init
 useEffect(() => {
   const token = document.cookie.match(/token=([^;]+)/)?.[1];
   const refreshToken = document.cookie.match(/refreshToken=([^;]+)/)?.[1];
-  
+
   if (token && refreshToken && !auth.token) {
     // Decode token to get user
     const payload = JSON.parse(atob(token.split('.')[1]));
@@ -516,6 +533,7 @@ useEffect(() => {
 ## ✅ Checklist
 
 ### Implementation Complete:
+
 - [x] Automatic token refresh on 401 errors
 - [x] Mutex to prevent concurrent refresh calls
 - [x] Redux state management for tokens
@@ -525,6 +543,7 @@ useEffect(() => {
 - [x] Retry original request after refresh
 
 ### Production Enhancements Needed:
+
 - [ ] HttpOnly cookies (backend implementation)
 - [ ] CSRF protection
 - [ ] Token rotation on refresh
