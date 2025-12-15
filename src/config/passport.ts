@@ -6,6 +6,7 @@ import { Request } from 'express';
 import config from './config';
 import { tokenTypes } from './tokens';
 import User from '../models/user.model';
+import logger from './logger';
 
 // Extract JWT from both Authorization header and cookies
 const jwtFromRequestExtractor = (req: Request) => {
@@ -66,9 +67,12 @@ const localLoginStrategy = new LocalStrategy(
 
       // Check if account is locked
       if (user.lockedUntil && user.lockedUntil > new Date()) {
+        const minutesLeft = Math.ceil((user.lockedUntil.getTime() - Date.now()) / (60 * 1000));
         return done(null, false, {
-          message:
-            'Account locked due to multiple failed login attempts. Please try again later or reset your password.',
+          message: `Account locked due to multiple failed login attempts. Please try again in ${minutesLeft} minute(s) or reset your password.`,
+          accountLocked: true,
+          lockedUntil: user.lockedUntil,
+          minutesLeft,
         });
       }
 
@@ -214,6 +218,7 @@ const googleStrategy =
                 role: 'user',
                 isEmailVerified: true, // Google emails are verified
                 password: crypto.randomBytes(32).toString('hex'), // Random secure password for OAuth users
+                profilePictureUrl: profile.photos?.[0]?.value,
                 oauthProviders: [
                   {
                     provider: 'google',
@@ -235,7 +240,11 @@ const googleStrategy =
                 (provider) => provider.provider === 'google' && provider.providerId === profile.id
               );
 
+              logger.info(`Google OAuth - Profile Avatar: ${profile.photos?.[0]?.value}`);
+              logger.info(`Google OAuth - User Existing Avatar: ${user.profilePictureUrl}`);
+
               if (!hasGoogleProvider) {
+                user.profilePictureUrl = user.profilePictureUrl || profile.photos?.[0]?.value;
                 user.oauthProviders = user.oauthProviders || [];
                 user.oauthProviders.push({
                   provider: 'google',

@@ -8,13 +8,13 @@ import ApiError from '@/utils/ApiError';
 import { IUser } from '@/models/user.model';
 
 const logout = catchAsync(async (req: Request, res: Response) => {
-  const refreshToken = req.cookies.refreshToken || req.body.refreshToken;
+  const refreshToken = req.cookies?.refreshToken || req.body?.refreshToken;
 
   if (refreshToken) {
     await authService.logout(refreshToken);
   }
 
-  // Only clear refreshToken cookie (accessToken is in memory on client)
+  // Clear all auth cookies
   res.clearCookie('refreshToken', {
     httpOnly: true,
     secure: config.env === 'production',
@@ -50,7 +50,11 @@ const refreshTokens = catchAsync(async (req: Request, res: Response) => {
   res.json({
     code: httpStatus.OK,
     message: 'Tokens refreshed successfully',
-    data: { tokens },
+    data: {
+      tokens: {
+        access: tokens.access,
+      },
+    },
   });
 });
 
@@ -135,14 +139,7 @@ const getCurrentUser = catchAsync(async (req: Request, res: Response) => {
     code: httpStatus.OK,
     message: 'User retrieved successfully',
     data: {
-      user: {
-        id: user._id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        isEmailVerified: user.isEmailVerified,
-        status: user.status,
-      },
+      user, // toJSON() will be called automatically by Express
     },
   });
 });
@@ -154,8 +151,16 @@ const googleCallback = catchAsync(async (req: Request, res: Response) => {
   }
   const tokens = await tokenService.generateAuthTokens(user._id);
 
-  // Redirect to frontend with tokens in URL (will be extracted and stored in cookies)
-  const redirectUrl = `${config.frontendUrl}/auth/callback?token=${tokens.access.token}&refreshToken=${tokens.refresh.token}`;
+  // Set refreshToken in httpOnly cookie (secure, not accessible by JS)
+  res.cookie('refreshToken', tokens.refresh.token, {
+    httpOnly: true,
+    secure: config.env === 'production',
+    sameSite: 'strict',
+    maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+  });
+
+  // Redirect to frontend with only access token in URL
+  const redirectUrl = `${config.frontendUrl}/auth/callback?token=${tokens.access.token}`;
   res.redirect(redirectUrl);
 });
 
@@ -187,13 +192,7 @@ const registerWithPassport = (req: Request, res: Response, next: NextFunction): 
           : 'Registration successful. Please check your email to verify your account.',
         isResend,
         data: {
-          user: {
-            id: user._id,
-            email: user.email,
-            name: user.name,
-            role: user.role,
-            isEmailVerified: user.isEmailVerified,
-          },
+          user, // toJSON() will be called automatically by Express
           isResend,
         },
       });
@@ -203,13 +202,7 @@ const registerWithPassport = (req: Request, res: Response, next: NextFunction): 
         code: httpStatus.CREATED,
         message: 'Registration successful but verification email could not be sent. Please contact support.',
         data: {
-          user: {
-            id: user._id,
-            email: user.email,
-            name: user.name,
-            role: user.role,
-            isEmailVerified: user.isEmailVerified,
-          },
+          user, // toJSON() will be called automatically by Express
         },
       });
     }
@@ -223,6 +216,19 @@ const loginWithPassport = (req: Request, res: Response, next: NextFunction): voi
       return next(new ApiError(httpStatus.INTERNAL_SERVER_ERROR, err.message || 'Login failed'));
     }
     if (!user) {
+      // Special handling for account locked
+      if (info?.accountLocked) {
+        return res.status(httpStatus.TOO_MANY_REQUESTS).json({
+          message: info.message,
+          code: httpStatus.TOO_MANY_REQUESTS,
+          data: {
+            accountLocked: true,
+            lockedUntil: info.lockedUntil,
+            minutesLeft: info.minutesLeft,
+          },
+        });
+      }
+
       // Special handling for unverified email
       if (info?.emailNotVerified) {
         return res.status(httpStatus.FORBIDDEN).json({
@@ -242,10 +248,21 @@ const loginWithPassport = (req: Request, res: Response, next: NextFunction): voi
       // Generate tokens
       const tokens = await tokenService.generateAuthTokens(user._id);
 
-      // Only set refreshToken in httpOnly cookie
-      // accessToken is returned in response body (stored in memory on client)
+      // Set refreshToken in httpOnly cookie (secure, not accessible by JS)
       res.cookie('refreshToken', tokens.refresh.token, {
         httpOnly: true,
+        secure: config.env === 'production',
+        sameSite: 'strict',
+        maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+      });
+
+      // Set userRole in non-httpOnly cookie (for middleware access control)
+      // This is safe because:
+      // 1. Backend sets it, client cannot fake
+      // 2. Middleware validates against backend token
+      // 3. Only used for routing, not authorization
+      res.cookie('userRole', user.role, {
+        httpOnly: false, // Middleware needs to read this
         secure: config.env === 'production',
         sameSite: 'strict',
         maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
@@ -255,13 +272,10 @@ const loginWithPassport = (req: Request, res: Response, next: NextFunction): voi
         code: httpStatus.OK,
         message: 'Login successful',
         data: {
-          user: {
-            id: user._id,
-            email: user.email,
-            name: user.name,
-            role: user.role,
+          user, // toJSON() will be called automatically by Express
+          tokens: {
+            access: tokens.access,
           },
-          tokens,
         },
       });
     } catch (tokenError: any) {
@@ -278,7 +292,7 @@ const googleCallbackWithCookies = catchAsync(async (req: Request, res: Response)
   }
   const tokens = await tokenService.generateAuthTokens(user._id);
 
-  // Only set refreshToken in httpOnly cookie
+  // Set refreshToken in httpOnly cookie (secure, not accessible by JS)
   res.cookie('refreshToken', tokens.refresh.token, {
     httpOnly: true,
     secure: config.env === 'production',

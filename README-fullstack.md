@@ -672,7 +672,7 @@ See mockup in [design/dashboard-mockup.png](design/dashboard-mockup.png).
 }
 ```
 
-**POST /v1/auth/refresh-tokens**
+**POST /v1/auth/refresh**
 
 - Refresh token sent via cookie/body
 

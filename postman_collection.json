@@ -178,9 +178,9 @@
               }
             },
             "url": {
-              "raw": "{{baseUrl}}/auth/refresh-tokens",
+              "raw": "{{baseUrl}}/auth/refresh",
               "host": ["{{baseUrl}}"],
-              "path": ["auth", "refresh-tokens"]
+              "path": ["auth", "refresh"]
             }
           }
         },

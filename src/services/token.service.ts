@@ -12,6 +12,7 @@ import mongoose from 'mongoose';
  * @param {mongoose.Types.ObjectId} userId
  * @param {string} expires
  * @param {string} type
+ * @param {string} role - User role (admin, operator, user)
  * @param {string} [secret]
  * @returns {string}
  */
@@ -19,14 +20,21 @@ const generateToken = (
   userId: mongoose.Types.ObjectId,
   expires: Date,
   type: string,
+  role?: string,
   secret: string = config.jwt.secret
 ): string => {
-  const payload = {
+  const payload: any = {
     sub: userId.toString(),
     iat: Math.floor(Date.now() / 1000),
     exp: Math.floor(expires.getTime() / 1000),
     type,
   };
+
+  // Add role to payload if provided (for access and refresh tokens)
+  if (role) {
+    payload.role = role;
+  }
+
   return jwt.sign(payload, secret);
 };
 
@@ -105,11 +113,19 @@ const verifyToken = async (token: string, type: string) => {
  * @returns {Promise<Object>}
  */
 const generateAuthTokens = async (userId: mongoose.Types.ObjectId) => {
+  // Fetch user to get role
+  const user = await User.findById(userId);
+  if (!user) {
+    throw new Error('User not found');
+  }
+
+  const userRole = user.role;
+
   const accessTokenExpires = addMinutes(new Date(), config.jwt.accessExpirationMinutes);
-  const accessToken = generateToken(userId, accessTokenExpires, tokenTypes.ACCESS);
+  const accessToken = generateToken(userId, accessTokenExpires, tokenTypes.ACCESS, userRole);
 
   const refreshTokenExpires = addDays(new Date(), config.jwt.refreshExpirationDays);
-  const refreshToken = generateToken(userId, refreshTokenExpires, tokenTypes.REFRESH);
+  const refreshToken = generateToken(userId, refreshTokenExpires, tokenTypes.REFRESH, userRole);
   await saveToken(refreshToken, userId, refreshTokenExpires, tokenTypes.REFRESH);
 
   return {
