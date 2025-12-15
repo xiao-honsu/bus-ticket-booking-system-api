@@ -18,7 +18,7 @@ const logout = catchAsync(async (req: Request, res: Response) => {
   res.clearCookie('refreshToken', {
     httpOnly: true,
     secure: config.env === 'production',
-    sameSite: 'strict',
+    sameSite: config.env === 'production' ? 'none' : 'lax',
   });
 
   res.json({
@@ -43,7 +43,7 @@ const refreshTokens = catchAsync(async (req: Request, res: Response) => {
   res.cookie('refreshToken', tokens.refresh.token, {
     httpOnly: true,
     secure: config.env === 'production',
-    sameSite: 'strict',
+    sameSite: config.env === 'production' ? 'none' : 'lax',
     maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
   });
 
@@ -155,7 +155,7 @@ const googleCallback = catchAsync(async (req: Request, res: Response) => {
   res.cookie('refreshToken', tokens.refresh.token, {
     httpOnly: true,
     secure: config.env === 'production',
-    sameSite: 'strict',
+    sameSite: config.env === 'production' ? 'none' : 'lax',
     maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
   });
 
@@ -252,7 +252,7 @@ const loginWithPassport = (req: Request, res: Response, next: NextFunction): voi
       res.cookie('refreshToken', tokens.refresh.token, {
         httpOnly: true,
         secure: config.env === 'production',
-        sameSite: 'strict',
+        sameSite: config.env === 'production' ? 'none' : 'lax',
         maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
       });
 
@@ -264,7 +264,7 @@ const loginWithPassport = (req: Request, res: Response, next: NextFunction): voi
       res.cookie('userRole', user.role, {
         httpOnly: false, // Middleware needs to read this
         secure: config.env === 'production',
-        sameSite: 'strict',
+        sameSite: config.env === 'production' ? 'none' : 'lax',
         maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
       });
 
@@ -296,7 +296,7 @@ const googleCallbackWithCookies = catchAsync(async (req: Request, res: Response)
   res.cookie('refreshToken', tokens.refresh.token, {
     httpOnly: true,
     secure: config.env === 'production',
-    sameSite: 'strict',
+    sameSite: config.env === 'production' ? 'none' : 'lax',
     maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
   });
 
