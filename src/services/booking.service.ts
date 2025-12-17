@@ -3,6 +3,7 @@ import mongoose, { PaginateOptions } from 'mongoose';
 import Booking, { IBooking } from '../models/booking.model';
 import Trip, { ITrip } from '../models/trip.model';
 import User from '../models/user.model';
+import SeatLock from '../models/seatlock.model';
 import ApiError from '../utils/ApiError';
 import emailService from './email.service';
 import seatLockService from './seatlock.service';
@@ -76,9 +77,24 @@ const createBooking = async (bookingBody: Partial<IBooking>, sessionId?: string)
     throw new ApiError(httpStatus.BAD_REQUEST, `Seats ${alreadyBookedSeats.join(', ')} are already booked`);
   }
 
-  // Check if enough seats available
-  if (trip.availableSeats < requestedSeats.length) {
-    throw new ApiError(httpStatus.BAD_REQUEST, 'Not enough available seats');
+  // Check if enough seats available (including locked seats)
+  const activeLocks = await SeatLock.find({
+    trip: trip._id,
+    expiresAt: { $gt: new Date() },
+  });
+
+  const lockedSeatsCount = new Set(activeLocks.flatMap((lock) => lock.seatNumbers)).size;
+
+  const bus = trip.bus as any;
+  const totalSeats = bus.totalSeats;
+  const bookedSeatsCount = trip.bookedSeats.length;
+  const actuallyAvailable = totalSeats - bookedSeatsCount - lockedSeatsCount;
+
+  if (actuallyAvailable < requestedSeats.length) {
+    throw new ApiError(
+      httpStatus.BAD_REQUEST,
+      `Not enough available seats. Available: ${actuallyAvailable}, Requested: ${requestedSeats.length}`
+    );
   }
 
   // Create booking
@@ -155,9 +171,24 @@ const createGuestBooking = async (bookingBody: Partial<IBooking>, sessionId?: st
     );
   }
 
-  // Check if enough seats available
-  if (trip.availableSeats < requestedSeats.length) {
-    throw new ApiError(httpStatus.BAD_REQUEST, 'Not enough available seats');
+  // Check if enough seats available (including locked seats)
+  const activeLocks = await SeatLock.find({
+    trip: trip._id,
+    expiresAt: { $gt: new Date() },
+  });
+
+  const lockedSeatsCount = new Set(activeLocks.flatMap((lock) => lock.seatNumbers)).size;
+
+  const bus = trip.bus as any;
+  const totalSeats = bus.totalSeats;
+  const bookedSeatsCount = trip.bookedSeats.length;
+  const actuallyAvailable = totalSeats - bookedSeatsCount - lockedSeatsCount;
+
+  if (actuallyAvailable < requestedSeats.length) {
+    throw new ApiError(
+      httpStatus.BAD_REQUEST,
+      `Not enough available seats. Available: ${actuallyAvailable}, Requested: ${requestedSeats.length}`
+    );
   }
 
   // Calculate total amount and passengers count

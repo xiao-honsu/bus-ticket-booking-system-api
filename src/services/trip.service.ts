@@ -507,7 +507,16 @@ const getSeatMap = async (tripId: mongoose.Types.ObjectId, sessionId?: string) =
 
     // Get price from seatPricing map if exists, otherwise use base price
     const basePrice = trip.pricePerSeat;
-    const seatPrice = trip.seatPricing?.get(seat.seatNumber) || basePrice;
+    // Handle both Map object and plain object (after JSON serialization)
+    let seatPrice = basePrice;
+    if (trip.seatPricing) {
+      if (trip.seatPricing instanceof Map) {
+        seatPrice = trip.seatPricing.get(seat.seatNumber) || basePrice;
+      } else if (typeof trip.seatPricing === 'object') {
+        // Plain object or mongoose Map representation
+        seatPrice = (trip.seatPricing as any)[seat.seatNumber] || basePrice;
+      }
+    }
 
     let status: 'available' | 'booked' | 'locked' | 'selected';
     if (isBooked) {
