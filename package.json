@@ -12,6 +12,7 @@
     "seed:admin": "ts-node -r tsconfig-paths/register src/seedAdmin.ts",
     "seed:data": "ts-node -r tsconfig-paths/register src/seedData.ts",
     "seed:locks": "ts-node -r tsconfig-paths/register src/seedSeatLocks.ts",
+    "generate:seatmaps": "ts-node -r tsconfig-paths/register src/generateSeatMaps.ts",
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint . --ext .ts --fix",
     "prettier": "prettier --check \"src/**/*.ts\"",

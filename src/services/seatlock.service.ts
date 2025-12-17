@@ -22,21 +22,40 @@ const lockSeats = async (
   userId?: mongoose.Types.ObjectId,
   metadata?: { guestEmail?: string; guestPhone?: string; [key: string]: any }
 ): Promise<ISeatLock> => {
-  // Verify trip exists
-  const trip = await Trip.findById(tripId);
+  // Verify trip exists and populate bus info
+  const trip = await Trip.findById(tripId).populate('bus');
   if (!trip) {
     throw new ApiError(httpStatus.NOT_FOUND, 'Trip not found');
   }
 
-  // Check if seats exist in the trip
-  // Note: Actual seat validation should be implemented based on bus layout
-  // For now, we assume all seat numbers are valid if the trip exists
+  // Calculate real available capacity
+  const bus = trip.bus as any;
+  const totalSeats = bus.totalSeats;
+  const bookedSeatsCount = trip.bookedSeats.length;
 
-  // Check if any seats are already locked or booked
+  const allExistingLocks = await SeatLock.find({
+    trip: tripId,
+    expiresAt: { $gt: new Date() },
+  });
+
+  const alreadyLockedCount = new Set(allExistingLocks.flatMap((lock) => lock.seatNumbers)).size;
+
+  const actuallyAvailable = totalSeats - bookedSeatsCount - alreadyLockedCount;
+
+  // Check if enough capacity to lock requested seats
+  if (actuallyAvailable < seatNumbers.length) {
+    throw new ApiError(
+      httpStatus.BAD_REQUEST,
+      `Not enough available seats to lock. Available: ${actuallyAvailable}, Requested: ${seatNumbers.length}`
+    );
+  }
+
+  // Check if any of the requested seats are already locked by others
   const existingLocks = await SeatLock.find({
     trip: tripId,
     seatNumbers: { $in: seatNumbers },
     expiresAt: { $gt: new Date() },
+    sessionId: { $ne: sessionId }, // Exclude own session
   });
 
   if (existingLocks.length > 0) {
