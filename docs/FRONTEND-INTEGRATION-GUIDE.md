@@ -932,7 +932,7 @@ const SeatMap: React.FC<{ tripId: string }> = ({ tripId }) => {
         {seats.map((seat) => (
           <div
             key={seat.seatNumber}
-            className={`seat ${seat.status} ${seat.position.isWindow ? 'window' : ''}`}
+            className={`seat ${seat.status} ${seat.position?.isWindow ? 'window' : ''}`}
             onClick={() => handleSeatClick(seat)}
             title={
               seat.status === 'locked'
