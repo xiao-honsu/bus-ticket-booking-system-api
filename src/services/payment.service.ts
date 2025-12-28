@@ -5,38 +5,38 @@ import Booking from '../models/booking.model';
 import User from '../models/user.model';
 import ApiError from '../utils/ApiError';
 import emailService from './email.service';
+import { PayOS } from '@payos/node';
 
 // Initialize PayOS only if credentials are provided
-let payOS: any = null;
+const payOS = new PayOS({
+  clientId: config.payos.clientId,
+  apiKey: config.payos.apiKey,
+  checksumKey: config.payos.checksumKey,
+});
 
-// Try to initialize PayOS SDK (non-blocking)
-const initializePayOS = () => {
-  if (!config.payos.clientId || !config.payos.apiKey || !config.payos.checksumKey) {
-    return;
-  }
+// if (config.payos.clientId && config.payos.apiKey && config.payos.checksumKey) {
+//   (async () => {
+//     try {
+//       // Dynamic import to handle ESM module
+//       // eslint-disable-next-line @typescript-eslint/no-require-imports
+//       const PayOSModule = require('@payos/node'); // Handle both CommonJS and ES Module exports
+//       const PayOSConstructor = PayOSModule.default || PayOSModule;
 
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const PayOSModule = require('@payos/node');
-    const PayOSConstructor = PayOSModule.default || PayOSModule.PayOS || PayOSModule;
-
-    if (typeof PayOSConstructor === 'function') {
-      payOS = new PayOSConstructor(config.payos.clientId, config.payos.apiKey, config.payos.checksumKey);
-      console.log('[PayOS] SDK initialized successfully');
-    } else {
-      throw new Error('PayOS constructor not found in module exports');
-    }
-  } catch (error) {
-    // Don't crash the app if PayOS is not available
-    if (process.env.NODE_ENV !== 'test') {
-      console.warn('[PayOS] SDK not available:', error instanceof Error ? error.message : String(error));
-      console.warn('[PayOS] Payment features will be disabled. Install @payos/node to enable.');
-    }
-  }
-};
-
-// Initialize PayOS on module load
-initializePayOS();
+//       // Verify it's a constructor function
+//       if (typeof PayOSConstructor === 'function') {
+//         payOS =
+//       } else {
+//         throw new Error('PayOS constructor not found in module exports');
+//       }
+//     } catch (error) {
+//       // Silently fail if PayOS is not available (e.g., in tests)
+//       // Don't show warning in test environment to keep test output clean
+//       if (process.env.NODE_ENV !== 'test') {
+//         console.warn('PayOS SDK not available:', error instanceof Error ? error.message : error);
+//       }
+//     }
+//   })();
+// }
 
 /**
  * Create payment link for a booking
@@ -63,13 +63,14 @@ const createPaymentLink = async (bookingId: mongoose.Types.ObjectId) => {
   const paymentData = {
     orderCode,
     amount: booking.totalAmount,
-    description: `Bus ticket booking #${booking._id}`,
-    returnUrl: `${config.frontendUrl}/payment/success`,
-    cancelUrl: `${config.frontendUrl}/payment/cancel`,
+    description: `Ticket #${orderCode}`, // Max 25 chars - PayOS requirement
+    returnUrl: `${config.frontendUrl}/payment/success?orderCode=${orderCode}`,
+    cancelUrl: `${config.frontendUrl}/payment/cancel?orderCode=${orderCode}&bookingId=${booking._id}`,
   };
 
   try {
-    const paymentLink = await payOS.createPaymentLink(paymentData);
+    // Use paymentRequests.create() method from PayOS SDK v2
+    const paymentLink = await payOS.paymentRequests.create(paymentData);
 
     // Update booking with payment info
     booking.payment.method = 'payos';
@@ -158,7 +159,8 @@ const checkPaymentStatus = async (orderCode: string) => {
   }
 
   try {
-    const paymentInfo = await payOS.getPaymentLinkInformation(orderCode);
+    // Use paymentRequests.get() method from PayOS SDK v2
+    const paymentInfo = await payOS.paymentRequests.get(Number(orderCode));
 
     // Also get booking information
     const booking = await Booking.findOne({ 'payment.transactionId': orderCode });

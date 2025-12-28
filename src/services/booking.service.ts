@@ -98,8 +98,41 @@ const createBooking = async (bookingBody: Partial<IBooking>, sessionId?: string)
     );
   }
 
+  // Calculate seat prices and add to passengers
+  const passengersWithPrice = bookingBody.passengers?.map((p) => {
+    // Use seat-specific pricing if available, otherwise use base price
+    const seatPrice = trip.seatPricing?.get(p.seatNumber) || trip.pricePerSeat;
+    return {
+      ...p,
+      seatPrice,
+    };
+  });
+
+  // Generate unique reference number
+  const referenceNumber = `BKG-${Date.now()}-${Math.random().toString(36).substring(7).toUpperCase()}`;
+
+  // Calculate totals
+  const totalPassengers = passengersWithPrice?.length || 0;
+  const calculatedTotalAmount = passengersWithPrice?.reduce((sum, p) => sum + p.seatPrice, 0) || 0;
+
+  // Prepare complete booking data with all required fields
+  const completeBookingData = {
+    ...bookingBody,
+    referenceNumber,
+    passengers: passengersWithPrice,
+    totalPassengers,
+    totalAmount: bookingBody.totalAmount || calculatedTotalAmount, // Use provided or calculated
+    payment: {
+      amount: bookingBody.totalAmount || calculatedTotalAmount,
+      currency: 'VND',
+      status: 'pending' as const,
+      method: 'payos' as const, // Default to payos for now
+    },
+    status: 'pending' as const,
+  };
+
   // Create booking
-  const booking = await Booking.create(bookingBody);
+  const booking = await Booking.create(completeBookingData);
 
   // Update trip's booked seats and available seats
   trip.bookedSeats.push(...requestedSeats);
