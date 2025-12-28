@@ -44,14 +44,19 @@ export const emitSeatLocked = (
       timestamp: new Date(),
     };
 
+    // Get room size for debugging
+    const room = io.sockets.adapter.rooms.get(roomName);
+    const clientCount = room ? room.size : 0;
+
     io.to(roomName).emit('seatLocked', event);
 
-    logger.info(`[Socket.IO] Emitted seatLocked to room ${roomName}:`, {
+    logger.info(`[Socket.IO] ✅ Emitted seatLocked to room ${roomName} (${clientCount} clients):`, {
       seatNumbers,
       sessionId,
+      expiresAt,
     });
   } catch (error: any) {
-    logger.error('[Socket.IO] Error emitting seatLocked:', error.message);
+    logger.error('[Socket.IO] ❌ Error emitting seatLocked:', error.message);
   }
 };
 

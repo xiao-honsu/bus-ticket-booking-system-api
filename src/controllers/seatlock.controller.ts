@@ -3,6 +3,7 @@ import { Request, Response } from 'express';
 import mongoose from 'mongoose';
 import catchAsync from '../utils/catchAsync';
 import { seatLockService } from '../services';
+import logger from '../config/logger';
 
 /**
  * Lock seats for a trip
@@ -15,6 +16,9 @@ const lockSeats = catchAsync(async (req: Request, res: Response) => {
   const sessionId =
     clientSessionId || (userId ? userId.toString() : `guest-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`);
 
+  // Log request for debugging
+  logger.info(`[Lock Request] Trip: ${tripId}, Seats: ${seatNumbers.join(',')}, Session: ${sessionId}`);
+
   const lock = await seatLockService.lockSeats(
     new mongoose.Types.ObjectId(tripId),
     seatNumbers,
@@ -22,6 +26,8 @@ const lockSeats = catchAsync(async (req: Request, res: Response) => {
     userId,
     metadata
   );
+
+  logger.info(`[Lock Success] Seats ${seatNumbers.join(',')} locked, expires at ${lock.expiresAt}`);
 
   res.status(httpStatus.CREATED).json({
     success: true,

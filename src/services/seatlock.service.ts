@@ -61,7 +61,9 @@ const lockSeats = async (
 
   if (existingLocks.length > 0) {
     const lockedSeats = existingLocks.flatMap((lock) => lock.seatNumbers);
-    throw new ApiError(httpStatus.CONFLICT, `Seats ${lockedSeats.join(', ')} are already locked by another user`);
+    const conflictingSeats = seatNumbers.filter((seat) => lockedSeats.includes(seat));
+    logger.warn(`[Lock Conflict] Seats ${conflictingSeats.join(', ')} already locked for trip ${tripId}`);
+    throw new ApiError(httpStatus.CONFLICT, `Seats ${conflictingSeats.join(', ')} are already locked by another user`);
   }
 
   // Check if seats are already booked

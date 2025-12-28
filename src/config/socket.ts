@@ -88,7 +88,11 @@ export const initializeSocket = (
           socket.data.sessionId = sessionId;
         }
 
-        logger.info(`Socket ${socket.id} joined trip room: ${roomName}`);
+        // Get room size for debugging
+        const room = io.sockets.adapter.rooms.get(roomName);
+        const clientCount = room ? room.size : 0;
+
+        logger.info(`Socket ${socket.id} joined trip room: ${roomName} (now ${clientCount} clients in room)`);
 
         // Send success response
         if (callback) {

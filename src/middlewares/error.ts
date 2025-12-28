@@ -26,8 +26,13 @@ export const errorHandler = (err: ApiError, _req: Request, res: Response, _next:
   res.locals.errorMessage = err.message;
 
   const response = {
-    code: statusCode,
+    success: false,
+    statusCode,
     message,
+    error: {
+      code: statusCode,
+      message,
+    },
     ...(config.env === 'development' && { stack: err.stack }),
   };
 
