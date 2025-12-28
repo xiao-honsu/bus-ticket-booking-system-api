@@ -8,13 +8,20 @@ import { seatLockService } from '../services';
  * Lock seats for a trip
  */
 const lockSeats = catchAsync(async (req: Request, res: Response) => {
-  const { tripId, seatNumbers } = req.body;
+  const { tripId, seatNumbers, sessionId: clientSessionId, metadata } = req.body;
   const userId = (req.user as any)?._id;
 
-  // Generate session ID: use user ID if authenticated, otherwise generate a unique identifier
-  const sessionId = userId ? userId.toString() : `guest-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  // Use client sessionId if provided, otherwise generate new one
+  const sessionId =
+    clientSessionId || (userId ? userId.toString() : `guest-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`);
 
-  const lock = await seatLockService.lockSeats(new mongoose.Types.ObjectId(tripId), seatNumbers, sessionId, userId);
+  const lock = await seatLockService.lockSeats(
+    new mongoose.Types.ObjectId(tripId),
+    seatNumbers,
+    sessionId,
+    userId,
+    metadata
+  );
 
   res.status(httpStatus.CREATED).json({
     success: true,

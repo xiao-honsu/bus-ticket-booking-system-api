@@ -4,6 +4,7 @@ import SeatLock, { ISeatLock } from '../models/seatlock.model';
 import Trip from '../models/trip.model';
 import ApiError from '../utils/ApiError';
 import logger from '../config/logger';
+import { emitSeatLocked, emitSeatReleased } from './socket.service';
 
 const LOCK_DURATION_MINUTES = 10;
 
@@ -72,7 +73,36 @@ const lockSeats = async (
   // Set expiration time (10 minutes from now)
   const expiresAt = new Date(Date.now() + LOCK_DURATION_MINUTES * 60 * 1000);
 
-  // Create lock for each seat (or create one lock with multiple seats)
+  // Check if this session already has locks for this trip
+  const existingSessionLock = await SeatLock.findOne({
+    trip: tripId,
+    sessionId,
+    expiresAt: { $gt: new Date() },
+  });
+
+  if (existingSessionLock) {
+    // Update existing lock: add new seats and extend expiration
+    const combinedSeats = [...new Set([...existingSessionLock.seatNumbers, ...seatNumbers])];
+
+    existingSessionLock.seatNumbers = combinedSeats;
+    existingSessionLock.expiresAt = expiresAt;
+    if (metadata) {
+      existingSessionLock.metadata = { ...existingSessionLock.metadata, ...metadata };
+    }
+
+    await existingSessionLock.save();
+
+    logger.info(
+      `Updated lock for session ${sessionId}: added seats ${seatNumbers.join(', ')}, total seats: ${combinedSeats.join(', ')}`
+    );
+
+    // Emit real-time Socket.IO event for new seats only
+    emitSeatLocked(tripId, seatNumbers, sessionId, expiresAt, userId);
+
+    return existingSessionLock;
+  }
+
+  // Create new lock if session doesn't have one
   try {
     const lock = await SeatLock.create({
       trip: tripId,
@@ -84,6 +114,10 @@ const lockSeats = async (
     });
 
     logger.info(`Seats ${seatNumbers.join(', ')} locked for trip ${tripId} until ${expiresAt}`);
+
+    // Emit real-time Socket.IO event
+    emitSeatLocked(tripId, seatNumbers, sessionId, expiresAt, userId);
+
     return lock;
   } catch (error: any) {
     if (error.code === 11000) {
@@ -100,8 +134,17 @@ const lockSeats = async (
  * @returns {Promise<number>}
  */
 const releaseLocks = async (sessionId: string): Promise<number> => {
+  // Get locks before deleting to emit events
+  const locks = await SeatLock.find({ sessionId });
+
   const result = await SeatLock.deleteMany({ sessionId });
   logger.info(`Released ${result.deletedCount} seat locks for session ${sessionId}`);
+
+  // Emit real-time Socket.IO events for each lock released
+  locks.forEach((lock) => {
+    emitSeatReleased(lock.trip, lock.seatNumbers, sessionId, 'manual');
+  });
+
   return result.deletedCount || 0;
 };
 
@@ -117,12 +160,25 @@ const releaseSpecificLocks = async (
   seatNumbers: string[],
   sessionId: string
 ): Promise<number> => {
+  // Get locks before deleting to emit events
+  const locks = await SeatLock.find({
+    trip: tripId,
+    seatNumbers: { $in: seatNumbers },
+    sessionId,
+  });
+
   const result = await SeatLock.deleteMany({
     trip: tripId,
     seatNumbers: { $in: seatNumbers },
     sessionId,
   });
   logger.info(`Released ${result.deletedCount} seat locks for trip ${tripId}`);
+
+  // Emit real-time Socket.IO events
+  locks.forEach((lock) => {
+    emitSeatReleased(tripId, lock.seatNumbers, sessionId, 'manual');
+  });
+
   return result.deletedCount || 0;
 };
 
