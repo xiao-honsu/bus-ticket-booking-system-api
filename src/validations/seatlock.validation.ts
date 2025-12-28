@@ -12,6 +12,8 @@ const lockSeats = {
       'array.max': 'Maximum 10 seats can be selected at once',
       'any.required': 'Seat numbers are required',
     }),
+    sessionId: Joi.string().optional(),
+    metadata: Joi.object().optional(),
   }),
 };
 

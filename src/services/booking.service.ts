@@ -7,6 +7,7 @@ import SeatLock from '../models/seatlock.model';
 import ApiError from '../utils/ApiError';
 import emailService from './email.service';
 import seatLockService from './seatlock.service';
+import { emitSeatBooked } from './socket.service';
 import logger from '../config/logger';
 
 /**
@@ -109,7 +110,8 @@ const createBooking = async (bookingBody: Partial<IBooking>, sessionId?: string)
   if (sessionId) {
     await seatLockService.releaseSpecificLocks(trip._id, requestedSeats, sessionId);
   }
-
+  // Emit real-time Socket.IO event for booked seats
+  emitSeatBooked(trip._id, requestedSeats, booking.referenceNumber);
   // Populate booking for email
   await booking.populate([
     {
@@ -227,6 +229,9 @@ const createGuestBooking = async (bookingBody: Partial<IBooking>, sessionId?: st
   if (sessionId) {
     await seatLockService.releaseSpecificLocks(trip._id, requestedSeats, sessionId);
   }
+
+  // Emit real-time Socket.IO event for booked seats
+  emitSeatBooked(trip._id, requestedSeats, booking.referenceNumber);
 
   // Populate booking for email
   await booking.populate([

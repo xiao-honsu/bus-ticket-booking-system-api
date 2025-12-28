@@ -9,29 +9,34 @@ import emailService from './email.service';
 // Initialize PayOS only if credentials are provided
 let payOS: any = null;
 
-if (config.payos.clientId && config.payos.apiKey && config.payos.checksumKey) {
-  (async () => {
-    try {
-      // Dynamic import to handle ESM module
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const PayOSModule = require('@payos/node'); // Handle both CommonJS and ES Module exports
-      const PayOSConstructor = PayOSModule.default || PayOSModule;
+// Try to initialize PayOS SDK (non-blocking)
+const initializePayOS = () => {
+  if (!config.payos.clientId || !config.payos.apiKey || !config.payos.checksumKey) {
+    return;
+  }
 
-      // Verify it's a constructor function
-      if (typeof PayOSConstructor === 'function') {
-        payOS = new PayOSConstructor(config.payos.clientId, config.payos.apiKey, config.payos.checksumKey);
-      } else {
-        throw new Error('PayOS constructor not found in module exports');
-      }
-    } catch (error) {
-      // Silently fail if PayOS is not available (e.g., in tests)
-      // Don't show warning in test environment to keep test output clean
-      if (process.env.NODE_ENV !== 'test') {
-        console.warn('PayOS SDK not available:', error instanceof Error ? error.message : error);
-      }
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const PayOSModule = require('@payos/node');
+    const PayOSConstructor = PayOSModule.default || PayOSModule.PayOS || PayOSModule;
+
+    if (typeof PayOSConstructor === 'function') {
+      payOS = new PayOSConstructor(config.payos.clientId, config.payos.apiKey, config.payos.checksumKey);
+      console.log('[PayOS] SDK initialized successfully');
+    } else {
+      throw new Error('PayOS constructor not found in module exports');
     }
-  })();
-}
+  } catch (error) {
+    // Don't crash the app if PayOS is not available
+    if (process.env.NODE_ENV !== 'test') {
+      console.warn('[PayOS] SDK not available:', error instanceof Error ? error.message : String(error));
+      console.warn('[PayOS] Payment features will be disabled. Install @payos/node to enable.');
+    }
+  }
+};
+
+// Initialize PayOS on module load
+initializePayOS();
 
 /**
  * Create payment link for a booking

@@ -1,15 +1,33 @@
 import mongoose from 'mongoose';
+import http from 'http';
 import app from './app';
 import config from './config/config';
 import logger from './config/logger';
+import { initializeSocket } from './config/socket';
+import { startSeatLockMonitoring } from './services/seatlock-monitor.service';
 
-let server: any;
+let server: http.Server;
 
 // Connect to MongoDB
 mongoose.connect(config.mongoose.url, config.mongoose.options).then(() => {
   logger.info('Connected to MongoDB');
-  server = app.listen(config.port, () => {
-    logger.info(`Listening to port ${config.port}`);
+
+  // Create HTTP server from Express app
+  server = http.createServer(app);
+
+  // Initialize Socket.IO
+  initializeSocket(server);
+  logger.info('Socket.IO initialized');
+
+  // Start MongoDB Change Streams monitoring for seat locks
+  startSeatLockMonitoring();
+  logger.info('Seat lock monitoring started');
+
+  // Start listening
+  server.listen(config.port, () => {
+    logger.info(`Server listening on port ${config.port}`);
+    logger.info(`REST API: http://localhost:${config.port}/api/v1`);
+    logger.info(`Socket.IO: ws://localhost:${config.port}`);
   });
 });
 
