@@ -8,6 +8,8 @@ const allRoles = {
     'createReview',
     'manageOwnReviews',
     'getSearchHistory',
+    'collectPromotions',
+    'viewPromotions',
   ],
   admin: [
     'getUsers',
@@ -22,6 +24,7 @@ const allRoles = {
     'manageOperators',
     'viewAnalytics',
     'manageReviews',
+    'managePromotions',
   ],
 };
 
