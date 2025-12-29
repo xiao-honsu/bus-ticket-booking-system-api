@@ -99,7 +99,7 @@ const resetUserPassword = async (userId: mongoose.Types.ObjectId, newPassword: s
 };
 
 /**
- * Block user (change status to suspended)
+ * Block/Unblock user (toggle status between suspended and active)
  * @param {mongoose.Types.ObjectId} userId
  * @returns {Promise<IUser | null>}
  */
@@ -108,7 +108,8 @@ const blockUser = async (userId: mongoose.Types.ObjectId): Promise<IUser | null>
   if (!user) {
     throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
   }
-  user.status = 'suspended';
+  // Toggle status: if suspended -> active, if active -> suspended
+  user.status = user.status === 'suspended' ? 'active' : 'suspended';
   await user.save();
   return user;
 };
