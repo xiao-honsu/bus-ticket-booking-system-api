@@ -116,9 +116,11 @@ const getMyPromotions = catchAsync(async (req: Request, res: Response) => {
 });
 
 /**
- * Validate promotion code for booking
+ * Validate promotion code for booking (with auto-collect)
  * POST /api/v1/promotions/validate
  * Body: { code, orderAmount }
+ *
+ * If user hasn't collected the promotion, it will be auto-collected
  */
 const validatePromotion = catchAsync(async (req: Request, res: Response) => {
   const userId = (req.user as any)._id;
@@ -129,7 +131,11 @@ const validatePromotion = catchAsync(async (req: Request, res: Response) => {
   }
 
   const result = await promotionService.validatePromotionForBooking(userId, code, parseFloat(orderAmount));
-  res.send(result);
+
+  // Return with data wrapper for frontend consistency
+  res.send({
+    data: result,
+  });
 });
 
 /**
@@ -144,6 +150,15 @@ const getPromotionByCode = catchAsync(async (req: Request, res: Response) => {
   res.send(promotion);
 });
 
+/**
+ * Get promotion statistics (Admin only)
+ * GET /api/v1/promotions/:promotionId/statistics
+ */
+const getPromotionStatistics = catchAsync(async (req: Request, res: Response) => {
+  const statistics = await promotionService.getPromotionStatistics(new mongoose.Types.ObjectId(req.params.promotionId));
+  res.send(statistics);
+});
+
 export default {
   createPromotion,
   getPromotions,
@@ -155,4 +170,5 @@ export default {
   getMyPromotions,
   validatePromotion,
   getPromotionByCode,
+  getPromotionStatistics,
 };

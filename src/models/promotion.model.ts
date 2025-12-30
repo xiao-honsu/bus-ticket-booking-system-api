@@ -12,12 +12,19 @@ export interface IPromotion extends Document {
   startDate: Date; // When promotion starts
   endDate: Date; // When promotion ends
   usageLimit: number; // Total number of times this promo can be used
-  usedCount: number; // How many times it has been used
+  usedCount: number; // DEPRECATED: Use collectedCount instead (kept for backward compatibility)
+  collectedCount: number; // How many times it has been collected by users
+  actualUsedCount: number; // How many times it has actually been used in bookings
   perUserLimit: number; // How many times one user can collect (default: 1)
   isActive: boolean; // Can be toggled by admin
   imageUrl?: string; // Optional promotional image
   terms?: string; // Terms and conditions
   createdBy?: mongoose.Types.ObjectId; // Admin who created it
+  // Virtual fields
+  isValid?: boolean;
+  isExpired?: boolean;
+  remainingUsage?: number;
+  usageRate?: number;
 }
 
 export interface IPromotionModel extends Model<IPromotion>, PaginateModel<IPromotion> {}
@@ -79,6 +86,18 @@ const promotionSchema = new mongoose.Schema<IPromotion>(
       default: 0,
       min: 0,
     },
+    collectedCount: {
+      type: Number,
+      default: 0,
+      min: 0,
+      index: true,
+    },
+    actualUsedCount: {
+      type: Number,
+      default: 0,
+      min: 0,
+      index: true,
+    },
     perUserLimit: {
       type: Number,
       default: 1,
@@ -113,7 +132,7 @@ promotionSchema.index({ endDate: 1 });
 // Virtual to check if promotion is currently valid
 promotionSchema.virtual('isValid').get(function () {
   const now = new Date();
-  return this.isActive && this.startDate <= now && this.endDate >= now && this.usedCount < this.usageLimit;
+  return this.isActive && this.startDate <= now && this.endDate >= now && this.collectedCount < this.usageLimit;
 });
 
 // Virtual to check if promotion has expired
@@ -121,9 +140,15 @@ promotionSchema.virtual('isExpired').get(function () {
   return new Date() > this.endDate;
 });
 
-// Virtual to calculate remaining usage
+// Virtual to calculate remaining usage (available slots for collection)
 promotionSchema.virtual('remainingUsage').get(function () {
-  return Math.max(0, this.usageLimit - this.usedCount);
+  return Math.max(0, this.usageLimit - this.collectedCount);
+});
+
+// Virtual to calculate actual usage rate
+promotionSchema.virtual('usageRate').get(function () {
+  if (this.collectedCount === 0) return 0;
+  return Math.round((this.actualUsedCount / this.collectedCount) * 100);
 });
 
 promotionSchema.plugin(mongoosePaginate);

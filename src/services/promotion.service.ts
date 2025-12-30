@@ -3,6 +3,7 @@ import mongoose, { PaginateOptions } from 'mongoose';
 import Promotion, { IPromotion } from '../models/promotion.model';
 import UserPromotion, { IUserPromotion } from '../models/userpromotion.model';
 import ApiError from '../utils/ApiError';
+import logger from '../config/logger';
 
 /**
  * Create a promotion (Admin only)
@@ -159,9 +160,6 @@ const collectPromotion = async (userId: mongoose.Types.ObjectId, promotionId: mo
   if (promotion.endDate < now) {
     throw new ApiError(httpStatus.BAD_REQUEST, 'Promotion has expired');
   }
-  if (promotion.usedCount >= promotion.usageLimit) {
-    throw new ApiError(httpStatus.BAD_REQUEST, 'Promotion usage limit reached');
-  }
 
   // Check if user already collected this promotion
   const existingCollection = await UserPromotion.countDocuments({
@@ -173,6 +171,25 @@ const collectPromotion = async (userId: mongoose.Types.ObjectId, promotionId: mo
     throw new ApiError(httpStatus.BAD_REQUEST, 'You have already collected this promotion');
   }
 
+  // Atomic increment collectedCount - prevents race condition
+  const updatedPromotion = await Promotion.findOneAndUpdate(
+    {
+      _id: promotionId,
+      collectedCount: { $lt: promotion.usageLimit }, // Only increment if slots available
+    },
+    {
+      $inc: {
+        collectedCount: 1,
+        usedCount: 1, // Keep for backward compatibility
+      },
+    },
+    { new: true }
+  );
+
+  if (!updatedPromotion) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Promotion usage limit reached');
+  }
+
   // Create user promotion
   const userPromotion = await UserPromotion.create({
     userId,
@@ -181,10 +198,6 @@ const collectPromotion = async (userId: mongoose.Types.ObjectId, promotionId: mo
     isUsed: false,
     isExpired: false,
   });
-
-  // Increment used count
-  promotion.usedCount += 1;
-  await promotion.save();
 
   return userPromotion.populate('promotionId');
 };
@@ -303,6 +316,9 @@ const usePromotion = async (
   userPromotion.usedInBooking = bookingId;
   await userPromotion.save();
 
+  // Atomic increment actualUsedCount
+  await Promotion.findByIdAndUpdate(promotion._id, { $inc: { actualUsedCount: 1 } });
+
   return userPromotion;
 };
 
@@ -332,34 +348,128 @@ const calculateDiscount = (promotion: IPromotion, orderAmount: number): number =
 };
 
 /**
- * Validate promotion for booking
+ * Validate promotion for booking (with auto-collect)
+ * If user hasn't collected the promotion yet, auto-collect it for them
  */
 const validatePromotionForBooking = async (
   userId: mongoose.Types.ObjectId,
   promotionCode: string,
   orderAmount: number
 ) => {
+  // 1. Find promotion by code
   const promotion = await getPromotionByCode(promotionCode);
   if (!promotion) {
     throw new ApiError(httpStatus.NOT_FOUND, 'Invalid promotion code');
   }
 
+  // 2. Check if promotion is valid (active and within date range)
+  const now = new Date();
+  if (!promotion.isActive) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Promotion is not active');
+  }
+  if (promotion.startDate > now) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Promotion has not started yet');
+  }
+  if (promotion.endDate < now) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Promotion has expired');
+  }
+
+  // 3. Check if user already has this promotion
+  let userPromotion = await UserPromotion.findOne({
+    userId,
+    promotionId: promotion._id,
+  });
+
+  // 4. AUTO-COLLECT if user doesn't have it yet
+  if (!userPromotion) {
+    // Check if promotion still has available slots
+    if (promotion.collectedCount >= promotion.usageLimit) {
+      throw new ApiError(httpStatus.BAD_REQUEST, 'Promotion usage limit reached');
+    }
+
+    // Atomic increment to prevent race condition
+    const updatedPromotion = await Promotion.findOneAndUpdate(
+      {
+        _id: promotion._id,
+        collectedCount: { $lt: promotion.usageLimit },
+      },
+      {
+        $inc: {
+          collectedCount: 1,
+          usedCount: 1, // Backward compatibility
+        },
+      },
+      { new: true }
+    );
+
+    if (!updatedPromotion) {
+      throw new ApiError(httpStatus.BAD_REQUEST, 'Promotion usage limit reached');
+    }
+
+    // Create user promotion record
+    userPromotion = await UserPromotion.create({
+      userId,
+      promotionId: promotion._id,
+      collectedAt: now,
+      isUsed: false,
+      isExpired: false,
+    });
+
+    logger.info(`Auto-collected promotion ${promotionCode} for user ${userId}`);
+  }
+
+  // 5. Check if already used
+  if (userPromotion.isUsed) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'This promotion has already been used');
+  }
+
+  // 6. Check if expired
+  if (userPromotion.isExpired || promotion.endDate < now) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'This promotion has expired');
+  }
+
+  // 7. Check minimum order value
+  if (promotion.minOrderValue && orderAmount < promotion.minOrderValue) {
+    throw new ApiError(httpStatus.BAD_REQUEST, `Minimum order value is ${promotion.minOrderValue.toLocaleString()}₫`);
+  }
+
+  // 8. Calculate discount
+  const discountAmount = calculateDiscount(promotion, orderAmount);
+
+  return {
+    promotion,
+    userPromotion,
+    discountAmount,
+    finalAmount: orderAmount - discountAmount,
+  };
+};
+
+/**
+ * Validate promotion by userPromotionId for booking
+ */
+const validatePromotionById = async (
+  userId: mongoose.Types.ObjectId,
+  userPromotionId: mongoose.Types.ObjectId,
+  orderAmount: number
+) => {
+  // Get user promotion
+  const userPromotion = await UserPromotion.findOne({
+    _id: userPromotionId,
+    userId,
+    isUsed: false,
+    isExpired: false,
+  }).populate('promotionId');
+
+  if (!userPromotion) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'Promotion not found in your collection or already used');
+  }
+
+  const promotion = userPromotion.promotionId as any;
+
   // Check if promotion is valid
   const now = new Date();
   if (!promotion.isActive || promotion.startDate > now || promotion.endDate < now) {
     throw new ApiError(httpStatus.BAD_REQUEST, 'Promotion is not valid');
-  }
-
-  // Check if user has collected this promotion
-  const userPromotion = await UserPromotion.findOne({
-    userId,
-    promotionId: promotion._id,
-    isUsed: false,
-    isExpired: false,
-  });
-
-  if (!userPromotion) {
-    throw new ApiError(httpStatus.BAD_REQUEST, 'You have not collected this promotion or it has been used/expired');
   }
 
   // Check minimum order value
@@ -377,6 +487,97 @@ const validatePromotionForBooking = async (
   };
 };
 
+/**
+ * Get promotion statistics (Admin)
+ */
+const getPromotionStatistics = async (promotionId: mongoose.Types.ObjectId) => {
+  const promotion = await getPromotionById(promotionId);
+  if (!promotion) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'Promotion not found');
+  }
+
+  // Count total collected
+  const totalCollected = await UserPromotion.countDocuments({ promotionId });
+
+  // Count actually used
+  const totalUsed = await UserPromotion.countDocuments({
+    promotionId,
+    isUsed: true,
+  });
+
+  // Count expired but not used
+  const totalExpired = await UserPromotion.countDocuments({
+    promotionId,
+    isUsed: false,
+    isExpired: true,
+  });
+
+  // Count still available to use
+  const totalAvailable = await UserPromotion.countDocuments({
+    promotionId,
+    isUsed: false,
+    isExpired: false,
+  });
+
+  // Get top users who collected
+  const topCollectors = await UserPromotion.aggregate([
+    { $match: { promotionId: promotion._id } },
+    {
+      $group: {
+        _id: '$userId',
+        collectCount: { $sum: 1 },
+        usedCount: { $sum: { $cond: ['$isUsed', 1, 0] } },
+      },
+    },
+    { $sort: { collectCount: -1 } },
+    { $limit: 10 },
+    {
+      $lookup: {
+        from: 'users',
+        localField: '_id',
+        foreignField: '_id',
+        as: 'user',
+      },
+    },
+    { $unwind: '$user' },
+    {
+      $project: {
+        userId: '$_id',
+        userName: '$user.name',
+        userEmail: '$user.email',
+        collectCount: 1,
+        usedCount: 1,
+      },
+    },
+  ]);
+
+  return {
+    promotion: {
+      _id: promotion._id,
+      code: promotion.code,
+      title: promotion.title,
+      discountType: promotion.discountType,
+      discountValue: promotion.discountValue,
+      usageLimit: promotion.usageLimit,
+      collectedCount: promotion.collectedCount,
+      actualUsedCount: promotion.actualUsedCount,
+      remainingUsage: promotion.remainingUsage,
+      isActive: promotion.isActive,
+      startDate: promotion.startDate,
+      endDate: promotion.endDate,
+    },
+    statistics: {
+      totalCollected,
+      totalUsed,
+      totalExpired,
+      totalAvailable,
+      usageRate: totalCollected > 0 ? Math.round((totalUsed / totalCollected) * 100) : 0,
+      collectionRate: Math.round((promotion.collectedCount / promotion.usageLimit) * 100),
+    },
+    topCollectors,
+  };
+};
+
 export default {
   createPromotion,
   queryPromotions,
@@ -390,4 +591,6 @@ export default {
   usePromotion,
   calculateDiscount,
   validatePromotionForBooking,
+  validatePromotionById,
+  getPromotionStatistics,
 };

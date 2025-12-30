@@ -17,6 +17,7 @@ router.post('/validate', auth(), promotionController.validatePromotion);
 router.post('/', auth('managePromotions'), promotionController.createPromotion);
 router.get('/admin', auth('managePromotions'), promotionController.getPromotions);
 router.get('/:promotionId', auth('managePromotions'), promotionController.getPromotion);
+router.get('/:promotionId/statistics', auth('managePromotions'), promotionController.getPromotionStatistics);
 router.patch('/:promotionId', auth('managePromotions'), promotionController.updatePromotion);
 router.delete('/:promotionId', auth('managePromotions'), promotionController.deletePromotion);
 
