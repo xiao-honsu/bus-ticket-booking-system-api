@@ -7,6 +7,7 @@ import SeatLock from '../models/seatlock.model';
 import ApiError from '../utils/ApiError';
 import emailService from './email.service';
 import seatLockService from './seatlock.service';
+import promotionService from './promotion.service';
 import { emitSeatBooked } from './socket.service';
 import logger from '../config/logger';
 
@@ -115,15 +116,47 @@ const createBooking = async (bookingBody: Partial<IBooking>, sessionId?: string)
   const totalPassengers = passengersWithPrice?.length || 0;
   const calculatedTotalAmount = passengersWithPrice?.reduce((sum, p) => sum + p.seatPrice, 0) || 0;
 
+  // Handle promotion discount if provided
+  let discountAmount = 0;
+  let finalAmount = bookingBody.totalAmount || calculatedTotalAmount;
+  let promotionData: any = {};
+
+  if (bookingBody.userPromotion && bookingBody.user) {
+    try {
+      // Validate and apply promotion using userPromotionId
+      const userPromotionId = new mongoose.Types.ObjectId(bookingBody.userPromotion as any);
+      const userId = new mongoose.Types.ObjectId(bookingBody.user as any);
+
+      const {
+        promotion,
+        discountAmount: discount,
+        finalAmount: final,
+      } = await promotionService.validatePromotionById(userId, userPromotionId, calculatedTotalAmount);
+
+      discountAmount = discount;
+      finalAmount = final;
+      promotionData = {
+        appliedPromotion: promotion._id,
+        userPromotion: userPromotionId,
+        discountAmount,
+        originalAmount: calculatedTotalAmount,
+      };
+    } catch (error: any) {
+      logger.warn(`Promotion validation failed: ${error.message}`);
+      // Continue without promotion if validation fails
+    }
+  }
+
   // Prepare complete booking data with all required fields
-  const completeBookingData = {
+  const completeBookingData: Partial<IBooking> = {
     ...bookingBody,
     referenceNumber,
     passengers: passengersWithPrice,
     totalPassengers,
-    totalAmount: bookingBody.totalAmount || calculatedTotalAmount, // Use provided or calculated
+    totalAmount: finalAmount, // Final amount after discount
+    ...promotionData,
     payment: {
-      amount: bookingBody.totalAmount || calculatedTotalAmount,
+      amount: finalAmount,
       currency: 'VND',
       status: 'pending' as const,
       method: 'payos' as const, // Default to payos for now
@@ -132,7 +165,23 @@ const createBooking = async (bookingBody: Partial<IBooking>, sessionId?: string)
   };
 
   // Create booking
-  const booking = await Booking.create(completeBookingData);
+  const bookingDoc = await Booking.create(completeBookingData);
+  const booking = Array.isArray(bookingDoc) ? bookingDoc[0] : bookingDoc;
+
+  // Mark promotion as used if applied
+  if (promotionData.userPromotion && bookingBody.user) {
+    try {
+      await promotionService.usePromotion(
+        new mongoose.Types.ObjectId(bookingBody.user as any),
+        promotionData.userPromotion,
+        booking._id
+      );
+      logger.info(`Promotion ${promotionData.userPromotion} marked as used for booking ${booking._id}`);
+    } catch (error: any) {
+      logger.error(`Failed to mark promotion as used: ${error.message}`);
+      // Don't fail the booking if promotion marking fails
+    }
+  }
 
   // Update trip's booked seats and available seats
   trip.bookedSeats.push(...requestedSeats);
