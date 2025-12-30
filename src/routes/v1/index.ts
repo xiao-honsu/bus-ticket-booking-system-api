@@ -11,7 +11,6 @@ import paymentRoute from './payment.route';
 import seatLockRoute from './seatlock.route';
 import chatbotRoute from './chatbot.route';
 import locationRoute from './location.route';
-import searchRoute from '../search.route';
 import promotionRoute from './promotion.route';
 
 const router = express.Router();
@@ -64,10 +63,6 @@ const defaultRoutes = [
   {
     path: '/locations',
     route: locationRoute,
-  },
-  {
-    path: '/search',
-    route: searchRoute,
   },
   {
     path: '/promotions',
