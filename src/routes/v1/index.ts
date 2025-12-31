@@ -12,6 +12,7 @@ import seatLockRoute from './seatlock.route';
 import chatbotRoute from './chatbot.route';
 import locationRoute from './location.route';
 import promotionRoute from './promotion.route';
+import analyticsRoute from '../analytics.route';
 
 const router = express.Router();
 
@@ -67,6 +68,10 @@ const defaultRoutes = [
   {
     path: '/promotions',
     route: promotionRoute,
+  },
+  {
+    path: '/analytics',
+    route: analyticsRoute,
   },
 ];
 
