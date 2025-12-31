@@ -97,7 +97,8 @@ const searchLocations = async (query: string, type: string = 'all', limit: numbe
     return aCity.localeCompare(bCity);
   });
 
-  return sorted.slice(0, limit).map((loc) => ({
+  return sorted.slice(0, limit).map((loc, index) => ({
+    id: `${loc.city}-${loc.state}-${index}`.replace(/\s+/g, '-').toLowerCase(),
     city: loc.city,
     state: loc.state,
     displayName: `${loc.city}, ${loc.state}`,

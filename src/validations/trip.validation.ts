@@ -94,6 +94,9 @@ const searchTrips = {
       'number.min': 'Minimum available seats must be at least 1',
     }),
 
+    // Status filter
+    status: Joi.string().valid('scheduled', 'in_progress', 'completed', 'cancelled'),
+
     // Sorting & Pagination
     ...sortSchema,
     ...paginationSchema,
@@ -127,6 +130,11 @@ const createTrip = {
     pricePerSeat: Joi.number().min(0).required(),
     availableSeats: Joi.number().integer().min(0),
     status: Joi.string().valid('scheduled', 'in_progress', 'completed', 'cancelled'),
+    driver: Joi.object().keys({
+      name: Joi.string().required(),
+      phone: Joi.string().required(),
+      licenseNumber: Joi.string().required(),
+    }),
   }),
 };
 

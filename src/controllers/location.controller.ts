@@ -5,7 +5,7 @@ import locationService from '../services/location.service';
 const searchLocations = catchAsync(async (req: Request, res: Response) => {
   const { q, type, limit } = req.query;
   const locations = await locationService.searchLocations(q as string, type as string, Number(limit) || 10);
-  res.send(locations);
+  res.send({ results: locations, total: locations.length });
 });
 
 const getPopularLocations = catchAsync(async (req: Request, res: Response) => {

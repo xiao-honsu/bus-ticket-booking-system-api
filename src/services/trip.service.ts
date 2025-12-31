@@ -18,6 +18,7 @@ interface SearchTripsOptions {
   amenities?: string | string[];
   operatorId?: string;
   minAvailableSeats?: number;
+  status?: string;
   sortBy?: 'price' | 'departureTime' | 'duration' | 'availableSeats';
   sortOrder?: 'asc' | 'desc';
   page?: number;
@@ -202,6 +203,7 @@ const searchTrips = async (options: SearchTripsOptions): Promise<SearchResult> =
     amenities,
     operatorId,
     minAvailableSeats,
+    status,
     sortBy = 'departureTime',
     sortOrder = 'asc',
     page = 1,
@@ -210,8 +212,13 @@ const searchTrips = async (options: SearchTripsOptions): Promise<SearchResult> =
 
   const pipeline: PipelineStage[] = [];
 
-  // Stage 1: Initial match for scheduled trips and date filtering
-  const matchStage: any = { status: 'scheduled' };
+  // Stage 1: Initial match for status and date filtering
+  const matchStage: any = {};
+
+  // Status filter (default to scheduled if not specified)
+  if (status) {
+    matchStage.status = status;
+  }
 
   if (departureDate) {
     const startOfDay = new Date(departureDate);
@@ -252,11 +259,28 @@ const searchTrips = async (options: SearchTripsOptions): Promise<SearchResult> =
   });
   pipeline.push({ $unwind: '$routeInfo' });
 
-  // Filter by origin/destination
+  // Filter by origin/destination - Use exact match for better accuracy
   if (origin || destination) {
     const routeMatch: any = {};
-    if (origin) routeMatch['routeInfo.origin.city'] = { $regex: origin, $options: 'i' };
-    if (destination) routeMatch['routeInfo.destination.city'] = { $regex: destination, $options: 'i' };
+    // Exact match with case-insensitive comparison for precise city filtering
+    if (origin) {
+      routeMatch.$expr = routeMatch.$expr || { $and: [] };
+      if (!Array.isArray(routeMatch.$expr.$and)) {
+        routeMatch.$expr = { $and: [routeMatch.$expr] };
+      }
+      routeMatch.$expr.$and.push({
+        $eq: [{ $toLower: '$routeInfo.origin.city' }, origin.toLowerCase()],
+      });
+    }
+    if (destination) {
+      routeMatch.$expr = routeMatch.$expr || { $and: [] };
+      if (!Array.isArray(routeMatch.$expr.$and)) {
+        routeMatch.$expr = { $and: [routeMatch.$expr] };
+      }
+      routeMatch.$expr.$and.push({
+        $eq: [{ $toLower: '$routeInfo.destination.city' }, destination.toLowerCase()],
+      });
+    }
     pipeline.push({ $match: routeMatch });
   }
 
