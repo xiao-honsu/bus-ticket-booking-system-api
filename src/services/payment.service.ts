@@ -88,13 +88,36 @@ const createPaymentLink = async (bookingId: mongoose.Types.ObjectId) => {
 };
 
 /**
+ * Verify webhook signature from PayOS
+ * @param {object} webhookBody - Raw webhook body from PayOS
+ * @returns {object} Verified webhook data
+ */
+const verifyWebhook = (webhookBody: any): any => {
+  if (!payOS) {
+    throw new ApiError(httpStatus.SERVICE_UNAVAILABLE, 'Payment service is not configured');
+  }
+
+  try {
+    // Use PayOS SDK v2 webhooks.verify() method to validate signature
+    const verifiedData = payOS.webhooks.verify(webhookBody);
+    return verifiedData;
+  } catch (error: any) {
+    console.error('Webhook verification failed:', error.message);
+    throw new ApiError(httpStatus.UNAUTHORIZED, 'Invalid webhook signature');
+  }
+};
+
+/**
  * Handle payment webhook from PayOS
- * @param {object} webhookData
+ * @param {object} webhookData - Raw webhook body from PayOS
  * @returns {Promise<object>}
  */
 const handlePaymentWebhook = async (webhookData: any) => {
   try {
-    const { orderCode, code } = webhookData.data || webhookData;
+    // CRITICAL: Verify webhook signature first
+    const verifiedData = verifyWebhook(webhookData);
+
+    const { orderCode, code } = verifiedData.data || verifiedData;
 
     // code === "00" means success in PayOS
     if (code === '00' || code === 0) {
@@ -106,6 +129,14 @@ const handlePaymentWebhook = async (webhookData: any) => {
         booking.status = 'confirmed';
         booking.confirmedAt = new Date();
         await booking.save();
+
+        // Populate booking for email template (needs trip, route, bus, operator details)
+        await booking.populate([
+          {
+            path: 'trip',
+            populate: [{ path: 'route' }, { path: 'bus', populate: { path: 'operator' } }, { path: 'operator' }],
+          },
+        ]);
 
         // Send confirmation email
         let email: string | undefined;

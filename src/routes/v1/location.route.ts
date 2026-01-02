@@ -6,6 +6,13 @@ import locationValidation from '../../validations/location.validation';
 const router = express.Router();
 
 /**
+ * @route GET /v1/locations
+ * @desc Get all unique locations for combobox dropdown
+ * @access Public
+ */
+router.get('/', locationController.getAllLocations);
+
+/**
  * @route GET /v1/locations/search
  * @desc Search locations for autocomplete
  * @access Public

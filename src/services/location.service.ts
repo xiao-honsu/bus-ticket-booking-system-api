@@ -2,6 +2,48 @@ import Route from '../models/route.model';
 import SearchHistory from '../models/searchhistory.model';
 
 /**
+ * Get all unique locations (cities) from active routes
+ * Used for combobox dropdowns - returns all unique city/state combinations
+ */
+const getAllLocations = async () => {
+  const routes = await Route.find({ isActive: true })
+    .select('origin.city origin.state destination.city destination.state')
+    .lean();
+
+  const locationMap = new Map<string, { city: string; state: string }>();
+
+  routes.forEach((route) => {
+    // Add origin
+    const originKey = `${route.origin.city}|${route.origin.state}`;
+    if (!locationMap.has(originKey)) {
+      locationMap.set(originKey, {
+        city: route.origin.city,
+        state: route.origin.state,
+      });
+    }
+
+    // Add destination
+    const destKey = `${route.destination.city}|${route.destination.state}`;
+    if (!locationMap.has(destKey)) {
+      locationMap.set(destKey, {
+        city: route.destination.city,
+        state: route.destination.state,
+      });
+    }
+  });
+
+  // Convert to array and sort alphabetically by city
+  return Array.from(locationMap.values())
+    .sort((a, b) => a.city.localeCompare(b.city))
+    .map((loc) => ({
+      value: loc.city,
+      label: `${loc.city}, ${loc.state}`,
+      city: loc.city,
+      state: loc.state,
+    }));
+};
+
+/**
  * Search locations (cities) for autocomplete
  * @param query - Search query string
  * @param type - Filter by location type: 'origin', 'destination', or 'all'
@@ -160,6 +202,7 @@ const getPopularRoutes = async (limit: number = 10) => {
 };
 
 export default {
+  getAllLocations,
   searchLocations,
   getPopularLocations,
   getPopularRoutes,
