@@ -101,7 +101,34 @@ const queryTrips = async (filter: any, options: PaginateOptions) => {
  * @returns {Promise<ITrip | null>}
  */
 const getTripById = async (id: mongoose.Types.ObjectId): Promise<ITrip | null> => {
-  return Trip.findById(id).populate('bus').populate('route');
+  const trip = await Trip.findById(id).populate('bus').populate('route');
+
+  // Auto-update trip status if needed (real-time check)
+  if (trip) {
+    const now = new Date();
+
+    // Only update if status is 'scheduled' (not already in_progress, completed, or cancelled)
+    if (trip.status === 'scheduled') {
+      if (trip.arrivalTime && trip.departureTime <= now && trip.arrivalTime > now) {
+        // Currently between departure and arrival - set to in_progress
+        trip.status = 'in_progress';
+        await trip.save();
+      } else if (trip.departureTime < now) {
+        // Departure time has passed - set to completed
+        trip.status = 'completed';
+        await trip.save();
+      }
+    }
+    // If already in_progress, check if should be completed
+    else if (trip.status === 'in_progress') {
+      if (trip.arrivalTime && trip.arrivalTime <= now) {
+        trip.status = 'completed';
+        await trip.save();
+      }
+    }
+  }
+
+  return trip;
 };
 
 /**
@@ -115,6 +142,12 @@ const updateTripById = async (tripId: mongoose.Types.ObjectId, updateBody: Parti
   if (!trip) {
     throw new ApiError(httpStatus.NOT_FOUND, 'Trip not found');
   }
+
+  // Prevent status changes for trips that are in_progress, completed, or cancelled
+  if (updateBody.status && ['in_progress', 'completed', 'cancelled'].includes(trip.status)) {
+    throw new ApiError(httpStatus.BAD_REQUEST, `Cannot change status of trip that is already ${trip.status}`);
+  }
+
   Object.assign(trip, updateBody);
   await trip.save();
   return trip;

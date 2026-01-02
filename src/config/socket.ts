@@ -165,14 +165,21 @@ export const initializeSocket = (
     /**
      * Disconnection handler
      */
-    socket.on('disconnect', (reason) => {
+    socket.on('disconnect', async (reason) => {
       logger.info(`Socket disconnected: ${socket.id}, Reason: ${reason}`);
 
-      // Clean up: leave all rooms
-      socket.data.currentTrips.forEach((tripId) => {
+      // Clean up: leave all rooms asynchronously
+      const leavePromises = Array.from(socket.data.currentTrips).map((tripId) => {
         const roomName = getRoomName.trip(tripId);
-        socket.leave(roomName);
+        return socket.leave(roomName);
       });
+
+      try {
+        await Promise.all(leavePromises);
+        logger.info(`Socket ${socket.id} left ${leavePromises.length} rooms on disconnect`);
+      } catch (error: any) {
+        logger.error(`Error leaving rooms on disconnect: ${error.message}`);
+      }
     });
 
     /**

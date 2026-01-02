@@ -15,9 +15,13 @@ import { generalLimiter } from './middlewares/rateLimiter';
 import { errorConverter, errorHandler as customErrorHandler } from './middlewares/error';
 import ApiError from './utils/ApiError';
 import routes from './routes/v1';
+import { startTripStatusUpdater } from './jobs/tripStatus.job';
 
 // add example comment to test commit hook
 const app: Express = express();
+
+// Start cron jobs
+startTripStatusUpdater();
 
 // set security HTTP headers
 app.use(helmet());
