@@ -38,6 +38,7 @@ const envVarsSchema = Joi.object()
     GOOGLE_CLIENT_SECRET: Joi.string().description('Google OAuth client secret'),
     GOOGLE_CALLBACK_URL: Joi.string().description('Google OAuth callback URL'),
     LOG_LEVEL: Joi.string().valid('error', 'warn', 'info', 'http', 'verbose', 'debug').default('info'),
+    ALLOWED_ORIGINS: Joi.string().description('Comma-separated list of allowed origins for CORS'),
   })
   .unknown();
 
@@ -98,4 +99,8 @@ export default {
   logging: {
     level: envVars.LOG_LEVEL,
   },
+  // Parse ALLOWED_ORIGINS from comma-separated string
+  allowedOrigins: envVars.ALLOWED_ORIGINS
+    ? envVars.ALLOWED_ORIGINS.split(',').map((origin: string) => origin.trim())
+    : [envVars.FRONTEND_URL, envVars.CLIENT_URL],
 };

@@ -6,7 +6,7 @@ import ApiError from '../utils/ApiError';
 import logger from '../config/logger';
 import { emitSeatLocked, emitSeatReleased } from './socket.service';
 
-const LOCK_DURATION_MINUTES = 10;
+const LOCK_DURATION_MINUTES = 3; // Seat lock duration: 3 minutes
 
 /**
  * Lock seats for a trip
