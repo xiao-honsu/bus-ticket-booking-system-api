@@ -90,16 +90,17 @@ const createPaymentLink = async (bookingId: mongoose.Types.ObjectId) => {
 /**
  * Verify webhook signature from PayOS
  * @param {object} webhookBody - Raw webhook body from PayOS
- * @returns {object} Verified webhook data
+ * @returns {Promise<object>} Verified webhook data
  */
-const verifyWebhook = (webhookBody: any): any => {
+const verifyWebhook = async (webhookBody: any): Promise<any> => {
   if (!payOS) {
     throw new ApiError(httpStatus.SERVICE_UNAVAILABLE, 'Payment service is not configured');
   }
 
   try {
     // Use PayOS SDK v2 webhooks.verify() method to validate signature
-    const verifiedData = payOS.webhooks.verify(webhookBody);
+    // IMPORTANT: This is an async method that returns Promise<WebhookData>
+    const verifiedData = await payOS.webhooks.verify(webhookBody);
     return verifiedData;
   } catch (error: any) {
     console.error('Webhook verification failed:', error.message);
@@ -127,8 +128,8 @@ const handlePaymentWebhook = async (webhookData: any) => {
     }
 
     // CRITICAL: Verify webhook signature first
-    // verify() returns WebhookData directly (the data object content)
-    const verifiedData = verifyWebhook(webhookData);
+    // verify() is async and returns WebhookData directly (the data object content)
+    const verifiedData = await verifyWebhook(webhookData);
 
     // After verify(), verifiedData IS the WebhookData object
     // Extract orderCode and code directly (no need for .data)
