@@ -16,12 +16,14 @@ import { errorConverter, errorHandler as customErrorHandler } from './middleware
 import ApiError from './utils/ApiError';
 import routes from './routes/v1';
 import { startTripStatusUpdater } from './jobs/tripStatus.job';
+import { startSeatLockExpiryWarning } from './jobs/seatLockExpiry.job';
 
 // add example comment to test commit hook
 const app: Express = express();
 
 // Start cron jobs
 startTripStatusUpdater();
+startSeatLockExpiryWarning();
 
 // set security HTTP headers
 app.use(helmet());

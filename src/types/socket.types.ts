@@ -11,6 +11,7 @@ export interface ServerToClientEvents {
   seatLocked: (data: SeatLockedEvent) => void;
   seatReleased: (data: SeatReleasedEvent) => void;
   seatBooked: (data: SeatBookedEvent) => void;
+  seatLockExpiring: (data: SeatLockExpiringEvent) => void;
 
   // Seat status batch updates
   seatStatusUpdate: (data: SeatStatusUpdateEvent) => void;
@@ -67,6 +68,15 @@ export interface SeatReleasedEvent {
   seatNumbers: string[];
   sessionId: string;
   reason: 'manual' | 'expired' | 'booked';
+  timestamp: Date;
+}
+
+export interface SeatLockExpiringEvent {
+  tripId: string;
+  sessionId: string;
+  seatNumbers: string[];
+  remainingSeconds: number;
+  message: string;
   timestamp: Date;
 }
 

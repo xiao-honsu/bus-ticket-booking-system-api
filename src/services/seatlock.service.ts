@@ -326,6 +326,48 @@ const checkSeatAvailability = async (
   };
 };
 
+/**
+ * Get session lock information including expiration time
+ * @param {mongoose.Types.ObjectId} tripId
+ * @param {string} sessionId
+ * @returns {Promise<object>}
+ */
+const getSessionLockInfo = async (
+  tripId: mongoose.Types.ObjectId,
+  sessionId: string
+): Promise<{
+  hasLock: boolean;
+  expiresAt: Date | null;
+  remainingSeconds: number;
+  lockedSeats: string[];
+}> => {
+  const lock = await SeatLock.findOne({
+    trip: tripId,
+    sessionId,
+    expiresAt: { $gt: new Date() },
+  });
+
+  if (!lock) {
+    return {
+      hasLock: false,
+      expiresAt: null,
+      remainingSeconds: 0,
+      lockedSeats: [],
+    };
+  }
+
+  const now = new Date();
+  const remainingMs = lock.expiresAt.getTime() - now.getTime();
+  const remainingSeconds = Math.max(0, Math.floor(remainingMs / 1000));
+
+  return {
+    hasLock: true,
+    expiresAt: lock.expiresAt,
+    remainingSeconds,
+    lockedSeats: lock.seatNumbers,
+  };
+};
+
 export default {
   lockSeats,
   releaseLocks,
@@ -336,4 +378,5 @@ export default {
   doesSessionOwnLock,
   cleanupExpiredLocks,
   checkSeatAvailability,
+  getSessionLockInfo,
 };

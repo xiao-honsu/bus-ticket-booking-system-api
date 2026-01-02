@@ -17,4 +17,6 @@ router
 
 router.route('/:tripId').get(validate(seatLockValidation.getLockedSeats), seatLockController.getLockedSeats);
 
+router.route('/:tripId/session-info').get(seatLockController.getSessionLockInfo);
+
 export default router;

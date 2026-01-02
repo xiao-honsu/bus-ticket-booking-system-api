@@ -126,10 +126,38 @@ const checkAvailability = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+/**
+ * Get session lock information (for countdown timer)
+ */
+const getSessionLockInfo = catchAsync(async (req: Request, res: Response) => {
+  const { tripId } = req.params;
+  const { sessionId } = req.query;
+  const userId = (req.user as any)?._id;
+
+  // Use provided sessionId or generate from user
+  const effectiveSessionId = (sessionId as string) || (userId ? userId.toString() : undefined);
+
+  if (!effectiveSessionId) {
+    res.status(httpStatus.BAD_REQUEST).json({
+      success: false,
+      message: 'Session ID is required',
+    });
+    return;
+  }
+
+  const lockInfo = await seatLockService.getSessionLockInfo(new mongoose.Types.ObjectId(tripId), effectiveSessionId);
+
+  res.status(httpStatus.OK).json({
+    success: true,
+    data: lockInfo,
+  });
+});
+
 export default {
   lockSeats,
   releaseLocks,
   getLockedSeats,
   extendLocks,
   checkAvailability,
+  getSessionLockInfo,
 };

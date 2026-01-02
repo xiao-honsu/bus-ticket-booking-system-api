@@ -4,6 +4,7 @@ import {
   SeatLockedEvent,
   SeatReleasedEvent,
   SeatBookedEvent,
+  SeatLockExpiringEvent,
   SeatStatusUpdateEvent,
   TripCapacityUpdateEvent,
   getRoomName,
@@ -222,6 +223,44 @@ export const getTripViewersCount = async (tripId: string | mongoose.Types.Object
 };
 
 /**
+ * Emit seat lock expiration warning (e.g., 1 minute before expiry)
+ * @param {string} tripId - Trip ID
+ * @param {string} sessionId - Session ID that holds the lock
+ * @param {string[]} seatNumbers - Array of locked seat numbers
+ * @param {number} remainingSeconds - Seconds remaining before expiry
+ */
+export const emitSeatLockExpiring = (
+  tripId: string | mongoose.Types.ObjectId,
+  sessionId: string,
+  seatNumbers: string[],
+  remainingSeconds: number
+): void => {
+  try {
+    const io = getIO();
+    const roomName = getRoomName.trip(tripId.toString());
+
+    const event: SeatLockExpiringEvent = {
+      tripId: tripId.toString(),
+      sessionId,
+      seatNumbers,
+      remainingSeconds,
+      message: `Your seat lock will expire in ${remainingSeconds} seconds`,
+      timestamp: new Date(),
+    };
+
+    io.to(roomName).emit('seatLockExpiring', event);
+
+    logger.info(`[Socket.IO] Emitted seatLockExpiring to room ${roomName}:`, {
+      sessionId,
+      seatNumbers,
+      remainingSeconds,
+    });
+  } catch (error: any) {
+    logger.error('[Socket.IO] Error emitting seatLockExpiring:', error.message);
+  }
+};
+
+/**
  * Broadcast message to all connected clients
  * @param {string} event - Event name
  * @param {any} data - Event data
@@ -243,5 +282,6 @@ export default {
   emitSeatStatusUpdate,
   emitTripCapacityUpdate,
   getTripViewersCount,
+  emitSeatLockExpiring,
   broadcastToAll,
 };
