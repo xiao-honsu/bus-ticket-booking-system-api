@@ -315,24 +315,8 @@ const createGuestBooking = async (bookingBody: Partial<IBooking>, sessionId?: st
   // Emit real-time Socket.IO event for booked seats
   emitSeatBooked(trip._id, requestedSeats, booking.referenceNumber);
 
-  // Populate booking for email
-  await booking.populate([
-    {
-      path: 'trip',
-      populate: [{ path: 'route' }, { path: 'bus', populate: { path: 'operator' } }, { path: 'operator' }],
-    },
-  ]);
-
-  // Send confirmation email to guest
-  try {
-    if (bookingBody.guestEmail) {
-      await emailService.sendBookingConfirmation(bookingBody.guestEmail, booking);
-      logger.info(`Guest booking confirmation email queued for ${bookingBody.guestEmail}`);
-    }
-  } catch (error) {
-    logger.error('Failed to send guest booking confirmation email:', error);
-    // Don't fail the booking if email fails
-  }
+  // Note: Confirmation email is sent AFTER payment is confirmed via PayOS webhook
+  // See payment.service.ts handlePaymentWebhook() for email sending logic
 
   return booking;
 };

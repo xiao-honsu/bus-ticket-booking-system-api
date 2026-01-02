@@ -11,6 +11,7 @@ const createBooking = {
           age: Joi.number().required().min(1).max(120),
           gender: Joi.string().required().valid('male', 'female', 'other'),
           seatNumber: Joi.string().required(),
+          seatPrice: Joi.number().required().min(0),
         })
       )
       .min(1)
@@ -74,6 +75,7 @@ const createGuestBooking = {
           age: Joi.number().integer().min(0).max(120),
           gender: Joi.string().valid('male', 'female', 'other'),
           seatNumber: Joi.string().required(),
+          seatPrice: Joi.number().required().min(0),
         })
       )
       .min(1)
