@@ -51,15 +51,14 @@ const getAnalytics = async (period: string): Promise<AnalyticsData> => {
 
   // Calculate summary
   const totalRevenue = bookings
-    .filter((b) => b.status !== 'cancelled')
+    .filter((b) => b.status === 'completed')
     .reduce((sum, b) => sum + (b.totalAmount || 0), 0);
 
   const totalBookings = bookings.length;
-  const avgTicketPrice = totalBookings > 0 ? totalRevenue / totalBookings : 0;
-
-  // Simple conversion rate calculation (bookings / total trips searched * 100)
-  // For now, use a formula based on completed vs total bookings
   const completedBookings = bookings.filter((b) => b.status === 'completed').length;
+  const avgTicketPrice = completedBookings > 0 ? totalRevenue / completedBookings : 0;
+
+  // Simple conversion rate calculation (completed bookings / total bookings * 100)
   const conversionRate = totalBookings > 0 ? (completedBookings / totalBookings) * 100 : 0;
 
   // Revenue by day
@@ -77,7 +76,7 @@ const getAnalytics = async (period: string): Promise<AnalyticsData> => {
   bookings.forEach((booking) => {
     const dateStr = new Date(booking.createdAt).toISOString().split('T')[0];
     if (revenueByDay[dateStr]) {
-      if (booking.status !== 'cancelled') {
+      if (booking.status === 'completed') {
         revenueByDay[dateStr].revenue += booking.totalAmount || 0;
       }
       revenueByDay[dateStr].bookings += 1;
@@ -117,7 +116,7 @@ const getRevenueStats = async (period: string) => {
 
   const bookings: any[] = await Booking.find({
     createdAt: { $gte: startDate, $lte: endDate },
-    status: { $ne: 'cancelled' },
+    status: 'completed',
   }).lean();
 
   const totalRevenue = bookings.reduce((sum, b) => sum + (b.totalAmount || 0), 0);
@@ -180,7 +179,7 @@ const getBookingStats = async (period: string) => {
 
 const getPopularRoutes = async (limit: number) => {
   const bookings: any[] = await Booking.find({
-    status: { $ne: 'cancelled' },
+    status: 'completed',
   })
     .populate('trip')
     .lean();
