@@ -114,14 +114,36 @@ const verifyWebhook = (webhookBody: any): any => {
  */
 const handlePaymentWebhook = async (webhookData: any) => {
   try {
+    // Log incoming webhook for debugging (only in non-production)
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('Incoming webhook data:', JSON.stringify(webhookData, null, 2));
+    }
+
+    // Handle PayOS test/confirmation webhook (no data or empty data)
+    // PayOS sends test webhooks when registering webhook URL
+    if (!webhookData || !webhookData.data) {
+      console.log('Received PayOS test/confirmation webhook (no data)');
+      return { success: true, message: 'Webhook received (test/confirmation)' };
+    }
+
     // CRITICAL: Verify webhook signature first
+    // verify() returns WebhookData directly (the data object content)
     const verifiedData = verifyWebhook(webhookData);
 
-    const { orderCode, code } = verifiedData.data || verifiedData;
+    // After verify(), verifiedData IS the WebhookData object
+    // Extract orderCode and code directly (no need for .data)
+    const orderCode = verifiedData.orderCode;
+    const code = verifiedData.code;
+
+    // Validate orderCode exists (can be 0, so check for undefined/null)
+    if (orderCode === undefined || orderCode === null) {
+      console.error('Webhook missing orderCode:', verifiedData);
+      return { success: false, message: 'Invalid webhook data: missing orderCode' };
+    }
 
     // code === "00" means success in PayOS
-    if (code === '00' || code === 0) {
-      const booking = await Booking.findOne({ 'payment.transactionId': orderCode.toString() });
+    if (code === '00') {
+      const booking = await Booking.findOne({ 'payment.transactionId': String(orderCode) });
 
       if (booking) {
         booking.payment.status = 'completed';
@@ -163,7 +185,7 @@ const handlePaymentWebhook = async (webhookData: any) => {
       }
     } else {
       // Payment failed or cancelled
-      const booking = await Booking.findOne({ 'payment.transactionId': orderCode.toString() });
+      const booking = await Booking.findOne({ 'payment.transactionId': String(orderCode) });
 
       if (booking) {
         booking.payment.status = 'failed';
