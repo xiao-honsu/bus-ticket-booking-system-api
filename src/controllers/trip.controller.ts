@@ -39,8 +39,8 @@ const getTrips = catchAsync(async (req: Request, res: Response) => {
   if (options.populate && typeof options.populate === 'string') {
     options.populate = options.populate.split(',').map((path: string) => ({ path: path.trim() }));
   } else if (!options.populate) {
-    // Default populate
-    options.populate = [{ path: 'bus' }, { path: 'route' }];
+    // Default populate - include operator information
+    options.populate = [{ path: 'bus' }, { path: 'route' }, { path: 'operator' }];
   }
 
   const result = await tripService.queryTrips(filter, options);

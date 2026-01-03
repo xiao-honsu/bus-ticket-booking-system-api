@@ -101,7 +101,7 @@ const queryTrips = async (filter: any, options: PaginateOptions) => {
  * @returns {Promise<ITrip | null>}
  */
 const getTripById = async (id: mongoose.Types.ObjectId): Promise<ITrip | null> => {
-  const trip = await Trip.findById(id).populate('bus').populate('route');
+  const trip = await Trip.findById(id).populate('bus').populate('route').populate('operator');
 
   // Auto-update trip status if needed (real-time check)
   if (trip) {
@@ -185,7 +185,8 @@ const searchTripsByRoute = async (routeId: mongoose.Types.ObjectId, departureDat
     status: 'scheduled',
   })
     .populate('bus')
-    .populate('route');
+    .populate('route')
+    .populate('operator');
 
   return trips;
 };
