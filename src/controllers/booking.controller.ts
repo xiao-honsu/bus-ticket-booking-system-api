@@ -34,22 +34,6 @@ const getBookings = catchAsync(async (req: Request, res: Response) => {
   res.send(result);
 });
 
-const getMyBookings = catchAsync(async (req: Request, res: Response) => {
-  const userId = (req as any).user.id;
-  const filter = { user: new mongoose.Types.ObjectId(userId) };
-  const options: any = pick(req.query, ['sortBy', 'limit', 'page']);
-
-  // Set defaults
-  options.limit = options.limit ? parseInt(options.limit as string) : 50;
-  options.page = options.page ? parseInt(options.page as string) : 1;
-  options.sortBy = options.sortBy || '-createdAt'; // Sort by newest first
-  options.populate = 'trip'; // Populate trip info
-
-  const result = await bookingService.queryBookings(filter, options);
-
-  res.send(result);
-});
-
 const getBooking = catchAsync(async (req: Request, res: Response) => {
   const booking = await bookingService.getBookingById(new mongoose.Types.ObjectId(req.params.bookingId));
   if (!booking) {
@@ -75,7 +59,6 @@ export default {
   createBooking,
   createGuestBooking,
   getBookings,
-  getMyBookings,
   getBooking,
   updateBooking,
   cancelBooking,

@@ -9,9 +9,6 @@ const router = express.Router();
 // Guest booking route (no authentication required)
 router.route('/guest').post(validate(bookingValidation.createGuestBooking), bookingController.createGuestBooking);
 
-// User's own bookings (requires authentication)
-router.route('/my').get(auth('manageOwnBookings'), bookingController.getMyBookings);
-
 router
   .route('/')
   .post(auth('bookTicket'), validate(bookingValidation.createBooking), bookingController.createBooking)

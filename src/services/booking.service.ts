@@ -377,7 +377,6 @@ const queryBookings = async (filter: any, options: PaginateOptions) => {
       },
     ],
   });
-
   return bookings;
 };
 
