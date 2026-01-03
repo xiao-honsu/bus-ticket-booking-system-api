@@ -26,6 +26,12 @@ const getBookings = catchAsync(async (req: Request, res: Response) => {
   const filter = pick(req.query, ['user', 'trip', 'status', 'paymentStatus']);
   const options: any = pick(req.query, ['sortBy', 'limit', 'page', 'populate']);
 
+  // Auto-filter by user for non-admin users (those with only manageOwnBookings permission)
+  const currentUser = (req as any).user;
+  if (currentUser.role !== 'admin' && !filter.user) {
+    filter.user = currentUser._id;
+  }
+
   // Set defaults
   options.limit = options.limit ? parseInt(options.limit as string) : 10;
   options.page = options.page ? parseInt(options.page as string) : 1;
