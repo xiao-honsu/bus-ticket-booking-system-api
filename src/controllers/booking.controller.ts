@@ -32,6 +32,11 @@ const getBookings = catchAsync(async (req: Request, res: Response) => {
     filter.user = currentUser._id;
   }
 
+  // Convert user filter to ObjectId if it's a string
+  if (filter.user && typeof filter.user === 'string') {
+    (filter as any).user = new mongoose.Types.ObjectId(filter.user);
+  }
+
   // Set defaults
   options.limit = options.limit ? parseInt(options.limit as string) : 10;
   options.page = options.page ? parseInt(options.page as string) : 1;
