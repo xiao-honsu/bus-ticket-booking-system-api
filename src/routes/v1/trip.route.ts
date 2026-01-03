@@ -13,6 +13,8 @@ router
 
 router.route('/search').get(validate(tripValidation.searchTrips), tripController.searchTrips);
 
+router.route('/check-availability').post(auth('manageTrips'), tripController.checkBusAvailability);
+
 router
   .route('/:tripId')
   .get(validate(tripValidation.getTrip), tripController.getTrip)

@@ -627,6 +627,54 @@ const getSeatMap = async (tripId: mongoose.Types.ObjectId, sessionId?: string) =
   };
 };
 
+/**
+ * Check if bus is available for a time slot
+ * @param {string} busId - Bus ID
+ * @param {Date} departureTime - Proposed departure time
+ * @param {Date} arrivalTime - Proposed arrival time
+ * @param {string} excludeTripId - Optional trip ID to exclude from check (for updates)
+ * @returns {Promise<{ available: boolean, conflicts: any[] }>}
+ */
+const checkBusAvailability = async (
+  busId: mongoose.Types.ObjectId,
+  departureTime: Date,
+  arrivalTime: Date,
+  excludeTripId?: mongoose.Types.ObjectId
+): Promise<{ available: boolean; conflicts: any[] }> => {
+  // Find all trips for this bus that overlap with the proposed time
+  const filter: any = {
+    bus: busId,
+    status: { $in: ['scheduled', 'in_progress'] }, // Only check active trips
+    $or: [
+      // Case 1: Existing trip starts during proposed trip
+      {
+        departureTime: { $gte: departureTime, $lt: arrivalTime },
+      },
+      // Case 2: Existing trip ends during proposed trip
+      {
+        arrivalTime: { $gt: departureTime, $lte: arrivalTime },
+      },
+      // Case 3: Existing trip completely contains proposed trip
+      {
+        departureTime: { $lte: departureTime },
+        arrivalTime: { $gte: arrivalTime },
+      },
+    ],
+  };
+
+  // Exclude specific trip if provided (for update scenarios)
+  if (excludeTripId) {
+    filter._id = { $ne: excludeTripId };
+  }
+
+  const conflicts = await Trip.find(filter).populate('route').select('departureTime arrivalTime route status').lean();
+
+  return {
+    available: conflicts.length === 0,
+    conflicts,
+  };
+};
+
 export default {
   createTrip,
   queryTrips,
@@ -638,4 +686,5 @@ export default {
   updateSeatPricing,
   getTripDetails,
   getSeatMap,
+  checkBusAvailability,
 };

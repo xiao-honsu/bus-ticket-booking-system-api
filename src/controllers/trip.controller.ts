@@ -172,6 +172,23 @@ const getSeatMap = catchAsync(async (req: Request, res: Response) => {
   res.send(seatMap);
 });
 
+const checkBusAvailability = catchAsync(async (req: Request, res: Response) => {
+  const { busId, departureTime, arrivalTime, excludeTripId } = req.body;
+
+  if (!busId || !departureTime || !arrivalTime) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'busId, departureTime, and arrivalTime are required');
+  }
+
+  const result = await tripService.checkBusAvailability(
+    new mongoose.Types.ObjectId(busId),
+    new Date(departureTime),
+    new Date(arrivalTime),
+    excludeTripId ? new mongoose.Types.ObjectId(excludeTripId) : undefined
+  );
+
+  res.send(result);
+});
+
 export default {
   createTrip,
   getTrips,
@@ -182,4 +199,5 @@ export default {
   deleteTrip,
   updateSeatPricing,
   getSeatMap,
+  checkBusAvailability,
 };

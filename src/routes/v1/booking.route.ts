@@ -21,6 +21,6 @@ router
 
 router
   .route('/:bookingId/cancel')
-  .post(auth('manageOwnBookings'), validate(bookingValidation.cancelBooking), bookingController.cancelBooking);
+  .post(auth('manageBookings'), validate(bookingValidation.cancelBooking), bookingController.cancelBooking);
 
 export default router;

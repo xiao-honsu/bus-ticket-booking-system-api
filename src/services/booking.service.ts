@@ -54,7 +54,11 @@ const calculateRefund = (booking: IBooking, trip: ITrip | null): number => {
  */
 const createBooking = async (bookingBody: Partial<IBooking>, sessionId?: string): Promise<IBooking> => {
   // Verify trip exists and has available seats
-  const trip = await Trip.findById(bookingBody.trip);
+  const trip = await Trip.findById(bookingBody.trip).populate([
+    { path: 'route' },
+    { path: 'bus', populate: { path: 'operator' } },
+    { path: 'operator' },
+  ]);
   if (!trip) {
     throw new ApiError(httpStatus.NOT_FOUND, 'Trip not found');
   }
@@ -147,6 +151,20 @@ const createBooking = async (bookingBody: Partial<IBooking>, sessionId?: string)
     }
   }
 
+  // Create trip snapshot for denormalized access
+  const tripRoute = trip.route as any;
+  const tripOperator = trip.operator as any;
+
+  const tripSnapshot = {
+    routeName: tripRoute
+      ? `${tripRoute.origin?.city || 'Unknown'} - ${tripRoute.destination?.city || 'Unknown'}`
+      : 'Unknown Route',
+    departureTime: trip.departureTime,
+    arrivalTime: trip.arrivalTime,
+    operatorName: tripOperator?.companyName || bus?.operator?.companyName || 'Unknown Operator',
+    busPlateNumber: bus?.plateNumber || 'Unknown',
+  };
+
   // Prepare complete booking data with all required fields
   const completeBookingData: Partial<IBooking> = {
     ...bookingBody,
@@ -162,6 +180,7 @@ const createBooking = async (bookingBody: Partial<IBooking>, sessionId?: string)
       method: 'payos' as const, // Default to payos for now
     },
     status: 'pending' as const,
+    tripSnapshot, // Add trip snapshot
   };
 
   // Create booking
@@ -227,7 +246,11 @@ const createBooking = async (bookingBody: Partial<IBooking>, sessionId?: string)
  */
 const createGuestBooking = async (bookingBody: Partial<IBooking>, sessionId?: string): Promise<IBooking> => {
   // Validate trip exists
-  const trip = await Trip.findById(bookingBody.trip);
+  const trip = await Trip.findById(bookingBody.trip).populate([
+    { path: 'route' },
+    { path: 'bus', populate: { path: 'operator' } },
+    { path: 'operator' },
+  ]);
   if (!trip) {
     throw new ApiError(httpStatus.NOT_FOUND, 'Trip not found');
   }
@@ -286,6 +309,21 @@ const createGuestBooking = async (bookingBody: Partial<IBooking>, sessionId?: st
   const contactEmail = bookingBody.guestEmail || bookingBody.contactEmail || '';
   const contactPhone = bookingBody.guestPhone || bookingBody.contactPhone || '';
 
+  // Create trip snapshot for denormalized access
+  const guestTripRoute = trip.route as any;
+  const guestTripBus = trip.bus as any;
+  const guestTripOperator = trip.operator as any;
+
+  const tripSnapshot = {
+    routeName: guestTripRoute
+      ? `${guestTripRoute.origin?.city || 'Unknown'} - ${guestTripRoute.destination?.city || 'Unknown'}`
+      : 'Unknown Route',
+    departureTime: trip.departureTime,
+    arrivalTime: trip.arrivalTime,
+    operatorName: guestTripOperator?.companyName || guestTripBus?.operator?.companyName || 'Unknown Operator',
+    busPlateNumber: guestTripBus?.plateNumber || 'Unknown',
+  };
+
   // Create booking with pending status
   const booking = await Booking.create({
     ...bookingBody,
@@ -300,6 +338,7 @@ const createGuestBooking = async (bookingBody: Partial<IBooking>, sessionId?: st
       currency: 'VND',
       status: 'pending',
     },
+    tripSnapshot, // Add trip snapshot
   } as Partial<IBooking>);
 
   // Update trip's booked seats and available seats

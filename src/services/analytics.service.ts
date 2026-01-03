@@ -16,7 +16,6 @@ interface AnalyticsData {
     pending: number;
     confirmed: number;
     cancelled: number;
-    completed: number;
   };
 }
 
@@ -51,15 +50,15 @@ const getAnalytics = async (period: string): Promise<AnalyticsData> => {
 
   // Calculate summary
   const totalRevenue = bookings
-    .filter((b) => b.status === 'completed')
+    .filter((b) => b.status === 'confirmed')
     .reduce((sum, b) => sum + (b.totalAmount || 0), 0);
 
   const totalBookings = bookings.length;
-  const completedBookings = bookings.filter((b) => b.status === 'completed').length;
-  const avgTicketPrice = completedBookings > 0 ? totalRevenue / completedBookings : 0;
+  const confirmedBookings = bookings.filter((b) => b.status === 'confirmed').length;
+  const avgTicketPrice = confirmedBookings > 0 ? totalRevenue / confirmedBookings : 0;
 
-  // Simple conversion rate calculation (completed bookings / total bookings * 100)
-  const conversionRate = totalBookings > 0 ? (completedBookings / totalBookings) * 100 : 0;
+  // Simple conversion rate calculation (confirmed bookings / total bookings * 100)
+  const conversionRate = totalBookings > 0 ? (confirmedBookings / totalBookings) * 100 : 0;
 
   // Revenue by day
   const revenueByDay: { [key: string]: { revenue: number; bookings: number } } = {};
@@ -76,7 +75,7 @@ const getAnalytics = async (period: string): Promise<AnalyticsData> => {
   bookings.forEach((booking) => {
     const dateStr = new Date(booking.createdAt).toISOString().split('T')[0];
     if (revenueByDay[dateStr]) {
-      if (booking.status === 'completed') {
+      if (booking.status === 'confirmed') {
         revenueByDay[dateStr].revenue += booking.totalAmount || 0;
       }
       revenueByDay[dateStr].bookings += 1;
@@ -96,7 +95,6 @@ const getAnalytics = async (period: string): Promise<AnalyticsData> => {
     pending: bookings.filter((b) => b.status === 'pending').length,
     confirmed: bookings.filter((b) => b.status === 'confirmed').length,
     cancelled: bookings.filter((b) => b.status === 'cancelled').length,
-    completed: bookings.filter((b) => b.status === 'completed').length,
   };
 
   return {
@@ -116,7 +114,7 @@ const getRevenueStats = async (period: string) => {
 
   const bookings: any[] = await Booking.find({
     createdAt: { $gte: startDate, $lte: endDate },
-    status: 'completed',
+    status: 'confirmed',
   }).lean();
 
   const totalRevenue = bookings.reduce((sum, b) => sum + (b.totalAmount || 0), 0);
@@ -149,7 +147,6 @@ const getBookingStats = async (period: string) => {
     pending: bookings.filter((b) => b.status === 'pending').length,
     confirmed: bookings.filter((b) => b.status === 'confirmed').length,
     cancelled: bookings.filter((b) => b.status === 'cancelled').length,
-    completed: bookings.filter((b) => b.status === 'completed').length,
   };
 
   // Group by day of week
@@ -179,7 +176,7 @@ const getBookingStats = async (period: string) => {
 
 const getPopularRoutes = async (limit: number) => {
   const bookings: any[] = await Booking.find({
-    status: 'completed',
+    status: 'confirmed',
   })
     .populate('trip')
     .lean();

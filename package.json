@@ -16,6 +16,7 @@
     "update:timestamps": "ts-node -r tsconfig-paths/register src/updateBookingTimestamps.ts",
     "update:trip-status": "ts-node -r tsconfig-paths/register src/updateTripStatus.ts",
     "update:trip-prices": "ts-node -r tsconfig-paths/register src/updateTripPrices.ts",
+    "migrate:trip-snapshots": "ts-node -r tsconfig-paths/register src/migrateTripSnapshots.ts",
     "generate:seatmaps": "ts-node -r tsconfig-paths/register src/generateSeatMaps.ts",
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint . --ext .ts --fix",
