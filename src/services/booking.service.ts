@@ -369,7 +369,20 @@ const createGuestBooking = async (bookingBody: Partial<IBooking>, sessionId?: st
 const queryBookings = async (filter: any, options: PaginateOptions) => {
   const bookings = await Booking.paginate(filter, {
     ...options,
-    populate: [{ path: 'user' }, { path: 'trip', populate: { path: 'bus operator route' } }],
+    populate: [
+      { path: 'user' },
+      {
+        path: 'trip',
+        populate: [
+          { path: 'bus' },
+          { path: 'operator' },
+          {
+            path: 'route',
+            populate: ['origin', 'destination'],
+          },
+        ],
+      },
+    ],
   });
   return bookings;
 };

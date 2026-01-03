@@ -181,39 +181,33 @@ const getPopularRoutes = async (limit: number) => {
     .populate('trip')
     .lean();
 
-  // Group by route
+  // Group by route from tripSnapshot
   const routeCounts: {
     [key: string]: {
       count: number;
       revenue: number;
-      origin: string;
-      destination: string;
+      routeName: string;
     };
   } = {};
 
   bookings.forEach((booking) => {
-    if (booking.trip && typeof booking.trip === 'object') {
-      const trip = booking.trip as any;
-      const routeKey = `${trip.origin || 'Unknown'}-${trip.destination || 'Unknown'}`;
+    const routeName = booking.tripSnapshot?.routeName || 'Unknown Route';
 
-      if (!routeCounts[routeKey]) {
-        routeCounts[routeKey] = {
-          count: 0,
-          revenue: 0,
-          origin: trip.origin || 'Unknown',
-          destination: trip.destination || 'Unknown',
-        };
-      }
-
-      routeCounts[routeKey].count += 1;
-      routeCounts[routeKey].revenue += booking.totalAmount || 0;
+    if (!routeCounts[routeName]) {
+      routeCounts[routeName] = {
+        count: 0,
+        revenue: 0,
+        routeName,
+      };
     }
+
+    routeCounts[routeName].count += 1;
+    routeCounts[routeName].revenue += booking.totalAmount || 0;
   });
 
   const popularRoutes = Object.entries(routeCounts)
     .map(([_, data]) => ({
-      origin: data.origin,
-      destination: data.destination,
+      routeName: data.routeName,
       bookings: data.count,
       revenue: Math.round(data.revenue),
     }))
@@ -223,9 +217,74 @@ const getPopularRoutes = async (limit: number) => {
   return popularRoutes;
 };
 
+const getTodayBookingsCount = async (): Promise<number> => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  const count = await Booking.countDocuments({
+    createdAt: { $gte: today, $lt: tomorrow },
+  });
+
+  return count;
+};
+
+const getBookingsByStatusOverTime = async (period: string) => {
+  const { startDate, endDate } = getPeriodDates(period);
+
+  const bookings: any[] = await Booking.find({
+    createdAt: { $gte: startDate, $lte: endDate },
+  }).lean();
+
+  const days = period === '7d' ? 7 : period === '30d' ? 30 : 90;
+
+  // Initialize data structure
+  const dataByDate: {
+    [key: string]: {
+      date: string;
+      pending: number;
+      confirmed: number;
+      cancelled: number;
+    };
+  } = {};
+
+  // Initialize all days
+  for (let i = 0; i < days; i++) {
+    const date = new Date(endDate.getTime() - i * 24 * 60 * 60 * 1000);
+    const dateStr = date.toISOString().split('T')[0];
+    dataByDate[dateStr] = {
+      date: dateStr,
+      pending: 0,
+      confirmed: 0,
+      cancelled: 0,
+    };
+  }
+
+  // Fill in actual data
+  bookings.forEach((booking) => {
+    const dateStr = new Date(booking.createdAt).toISOString().split('T')[0];
+    if (dataByDate[dateStr]) {
+      if (booking.status === 'pending') {
+        dataByDate[dateStr].pending += 1;
+      } else if (booking.status === 'confirmed') {
+        dataByDate[dateStr].confirmed += 1;
+      } else if (booking.status === 'cancelled') {
+        dataByDate[dateStr].cancelled += 1;
+      }
+    }
+  });
+
+  const result = Object.values(dataByDate).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+  return result;
+};
+
 export default {
   getAnalytics,
   getRevenueStats,
   getBookingStats,
   getPopularRoutes,
+  getTodayBookingsCount,
+  getBookingsByStatusOverTime,
 };

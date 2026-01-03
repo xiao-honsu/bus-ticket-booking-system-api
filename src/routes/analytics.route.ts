@@ -10,5 +10,7 @@ router.get('/', analyticsController.getAnalytics);
 router.get('/revenue', analyticsController.getRevenueStats);
 router.get('/bookings', analyticsController.getBookingStats);
 router.get('/popular-routes', analyticsController.getPopularRoutes);
+router.get('/today-bookings', analyticsController.getTodayBookings);
+router.get('/bookings-by-status', analyticsController.getBookingsByStatus);
 
 export default router;

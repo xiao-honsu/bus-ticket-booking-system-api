@@ -26,9 +26,22 @@ const getPopularRoutes = catchAsync(async (req: Request, res: Response) => {
   res.send(popularRoutes);
 });
 
+const getTodayBookings = catchAsync(async (_req: Request, res: Response) => {
+  const count = await analyticsService.getTodayBookingsCount();
+  res.send({ count });
+});
+
+const getBookingsByStatus = catchAsync(async (req: Request, res: Response) => {
+  const { period = '7d' } = req.query;
+  const data = await analyticsService.getBookingsByStatusOverTime(period as string);
+  res.send(data);
+});
+
 export default {
   getAnalytics,
   getRevenueStats,
   getBookingStats,
   getPopularRoutes,
+  getTodayBookings,
+  getBookingsByStatus,
 };
