@@ -5,6 +5,7 @@ import Booking from '../models/booking.model';
 import User from '../models/user.model';
 import ApiError from '../utils/ApiError';
 import emailService from './email.service';
+import logger from '../config/logger';
 import { PayOS } from '@payos/node';
 
 // Initialize PayOS only if credentials are provided
@@ -161,7 +162,7 @@ const handlePaymentWebhook = async (webhookData: any) => {
           },
         ]);
 
-        // Send confirmation email
+        // Send confirmation email (fire-and-forget to not block webhook response)
         let email: string | undefined;
 
         if (booking.user) {
@@ -172,12 +173,24 @@ const handlePaymentWebhook = async (webhookData: any) => {
         }
 
         if (email) {
-          try {
-            await emailService.sendBookingConfirmation(email, booking);
-          } catch (emailError) {
-            console.error('Failed to send confirmation email:', emailError);
-            // Don't throw error, payment is still successful
-          }
+          // Log the email attempt
+          logger.info(`Attempting to send booking confirmation email to ${email} for booking ${booking._id}`);
+
+          // Fire-and-forget: Send email in background, don't await
+          // This prevents webhook timeout while still attempting to send email
+          emailService
+            .sendBookingConfirmation(email, booking)
+            .then(() => {
+              logger.info(`Booking confirmation email sent successfully to ${email} for booking ${booking._id}`);
+            })
+            .catch((emailError: Error) => {
+              logger.error(
+                `Failed to send confirmation email to ${email} for booking ${booking._id}: ${emailError.message}`
+              );
+              // Email failure is logged but doesn't affect payment success
+            });
+        } else {
+          logger.warn(`No email address found for booking ${booking._id} - confirmation email not sent`);
         }
 
         return { success: true, message: 'Payment processed successfully', bookingId: booking._id };

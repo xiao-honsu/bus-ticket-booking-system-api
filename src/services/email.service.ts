@@ -3,11 +3,28 @@ import config from '../config/config';
 import logger from '../config/logger';
 import fs from 'fs';
 import path from 'path';
+
+// Retry configuration for email sending
+const EMAIL_RETRY_CONFIG = {
+  maxRetries: 3,
+  initialDelayMs: 1000, // 1 second
+  maxDelayMs: 10000, // 10 seconds max
+  backoffMultiplier: 2,
+};
+
+// Helper function for delay with exponential backoff
+const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
+
 const transport = nodemailer.createTransport({
   ...config.email.smtp,
-  connectionTimeout: 10000, // 10 seconds
-  greetingTimeout: 10000,
-  socketTimeout: 30000, // 30 seconds
+  // Increased timeouts for production environments (especially cloud platforms like Render)
+  connectionTimeout: 30000, // 30 seconds (increased from 10s)
+  greetingTimeout: 30000, // 30 seconds (increased from 10s)
+  socketTimeout: 60000, // 60 seconds (increased from 30s)
+  // Connection pool settings for better reliability
+  pool: true,
+  maxConnections: 3,
+  maxMessages: 100,
   logger: config.env === 'development',
   debug: config.env === 'development',
 });
@@ -23,13 +40,14 @@ if (config.env !== 'test') {
 }
 
 /**
- * Send an email
+ * Send an email with retry mechanism
  * @param {string} to
  * @param {string} subject
  * @param {string} html
+ * @param {number} retryCount - Current retry attempt (internal use)
  * @returns {Promise}
  */
-const sendEmail = async (to: string, subject: string, html: string): Promise<void> => {
+const sendEmail = async (to: string, subject: string, html: string, retryCount: number = 0): Promise<void> => {
   const msg = {
     from: config.email.from,
     to,
@@ -39,9 +57,33 @@ const sendEmail = async (to: string, subject: string, html: string): Promise<voi
 
   try {
     await transport.sendMail(msg);
-    logger.info(`Email sent successfully to ${to}`);
+    logger.info(`Email sent successfully to ${to}${retryCount > 0 ? ` (after ${retryCount} retries)` : ''}`);
   } catch (error: any) {
-    logger.error(`Failed to send email to ${to}:`, error);
+    const isRetryableError =
+      error.message?.includes('timeout') ||
+      error.message?.includes('ETIMEDOUT') ||
+      error.message?.includes('ECONNRESET') ||
+      error.message?.includes('ECONNREFUSED') ||
+      error.code === 'ETIMEDOUT' ||
+      error.code === 'ECONNRESET' ||
+      error.code === 'ECONNREFUSED';
+
+    if (isRetryableError && retryCount < EMAIL_RETRY_CONFIG.maxRetries) {
+      const delayMs = Math.min(
+        EMAIL_RETRY_CONFIG.initialDelayMs * Math.pow(EMAIL_RETRY_CONFIG.backoffMultiplier, retryCount),
+        EMAIL_RETRY_CONFIG.maxDelayMs
+      );
+
+      logger.warn(
+        `Email to ${to} failed (attempt ${retryCount + 1}/${EMAIL_RETRY_CONFIG.maxRetries + 1}), ` +
+          `retrying in ${delayMs}ms: ${error.message}`
+      );
+
+      await delay(delayMs);
+      return sendEmail(to, subject, html, retryCount + 1);
+    }
+
+    logger.error(`Failed to send email to ${to} after ${retryCount + 1} attempts:`, error.message);
     throw new Error(`Email delivery failed: ${error.message}`);
   }
 };

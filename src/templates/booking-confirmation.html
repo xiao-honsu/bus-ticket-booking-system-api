@@ -47,6 +47,47 @@
     .booking-details p {
       margin: 10px 0;
     }
+    .trip-section {
+      background-color: #f0f8ff;
+      padding: 15px;
+      margin: 15px 0;
+      border-radius: 4px;
+      border: 1px solid #4CAF50;
+    }
+    .trip-section h4 {
+      margin-top: 0;
+      color: #2e7d32;
+    }
+    .route-info {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin: 15px 0;
+    }
+    .location {
+      text-align: center;
+      flex: 1;
+    }
+    .arrow {
+      flex: 0 0 auto;
+      margin: 0 10px;
+      font-size: 20px;
+      color: #4CAF50;
+    }
+    .passenger-card {
+      background-color: #f9f9f9;
+      padding: 10px;
+      margin: 10px 0;
+      border-left: 3px solid #4CAF50;
+      border-radius: 4px;
+    }
+    .seat-badge {
+      background-color: #4CAF50;
+      color: white;
+      padding: 2px 8px;
+      border-radius: 3px;
+      font-weight: bold;
+    }
     .footer { 
       text-align: center; 
       padding: 20px; 
@@ -75,23 +116,50 @@
       <p>Your bus ticket booking has been confirmed successfully. Thank you for choosing our service!</p>
       
       <div class="booking-details">
-        <h3>Booking Details</h3>
+        <h3>📋 Booking Information</h3>
         <p><strong>Booking ID:</strong> {{bookingId}}</p>
-        <p><strong>Seats:</strong> {{seats}}</p>
-        <p><strong>Total Price:</strong> {{totalPrice}} VND</p>
-        <p><strong>Trip Date:</strong> {{tripDate}}</p>
+        <p><strong>Number of Seats:</strong> {{seatCount}}</p>
+        <p><strong>Seat Numbers:</strong> {{seats}}</p>
+        <p><strong>Total Amount:</strong> {{totalPrice}} VND</p>
+      </div>
+
+      <div class="trip-section">
+        <h4>🚌 Trip Details</h4>
+        
+        <div class="route-info">
+          <div class="location">
+            <p style="font-size: 18px; font-weight: bold; margin: 5px 0;">{{departureLocation}}</p>
+            <p style="font-size: 14px; color: #666; margin: 5px 0;">{{departureTime}}</p>
+          </div>
+          <div class="arrow">→</div>
+          <div class="location">
+            <p style="font-size: 18px; font-weight: bold; margin: 5px 0;">{{arrivalLocation}}</p>
+            <p style="font-size: 14px; color: #666; margin: 5px 0;">{{arrivalTime}}</p>
+          </div>
+        </div>
+
+        <p><strong>🚍 Bus Operator:</strong> {{operatorName}}</p>
+        <p><strong>🚐 Bus Type:</strong> {{busType}} ({{busNumber}})</p>
+        <p><strong>📍 Boarding Point:</strong> {{boardingPoint}}</p>
+        <p><strong>🎯 Amenities:</strong> {{amenities}}</p>
+      </div>
+
+      <div class="booking-details">
+        <h3>👥 Passenger Details</h3>
+        {{passengersList}}
       </div>
       
-      <p><strong>Important Reminders:</strong></p>
+      <p><strong>⚠️ Important Reminders:</strong></p>
       <ul>
-        <li>Please arrive at the departure location <strong>15 minutes before</strong> departure time.</li>
+        <li>Please arrive at the boarding point <strong>15 minutes before</strong> departure time.</li>
         <li>Keep your booking ID handy for verification.</li>
         <li>Bring a valid ID for check-in.</li>
+        <li>Contact the driver or support team if you need assistance.</li>
       </ul>
       
       <p>If you have any questions or need to make changes to your booking, feel free to contact our support team.</p>
       
-      <p>Safe travels!</p>
+      <p>Safe travels! 🚌</p>
     </div>
     <div class="footer">
       <p>&copy; 2025 Bus Ticket Booking System. All rights reserved.</p>
