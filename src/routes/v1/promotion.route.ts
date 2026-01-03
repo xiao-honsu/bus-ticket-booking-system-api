@@ -7,11 +7,7 @@ const router = express.Router();
 // Public routes
 router.get('/active', promotionController.getActivePromotions);
 router.get('/by-code/:code', promotionController.getPromotionByCode);
-
-// User routes (authenticated)
-router.post('/:promotionId/collect', auth(), promotionController.collectPromotion);
-router.get('/my-promotions', auth(), promotionController.getMyPromotions);
-router.post('/validate', auth(), promotionController.validatePromotion);
+router.post('/validate', promotionController.validatePromotion); // No auth required - can validate before login
 
 // Admin routes
 router.post('/', auth('managePromotions'), promotionController.createPromotion);

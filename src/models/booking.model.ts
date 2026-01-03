@@ -69,7 +69,7 @@ export interface IBooking extends Document {
   discountAmount?: number; // Discount from promotion
   originalAmount?: number; // Original amount before discount
   appliedPromotion?: mongoose.Types.ObjectId; // Reference to Promotion
-  userPromotion?: mongoose.Types.ObjectId; // Reference to UserPromotion used
+  promotionCode?: string; // Promotion code used
   status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
   expiresAt?: Date;
   confirmedAt?: Date;
@@ -192,9 +192,10 @@ const bookingSchema = new mongoose.Schema<IBooking>(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Promotion',
     },
-    userPromotion: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'UserPromotion',
+    promotionCode: {
+      type: String,
+      uppercase: true,
+      trim: true,
     },
     status: {
       type: String,

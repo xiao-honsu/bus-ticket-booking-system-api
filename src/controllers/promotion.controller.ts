@@ -89,57 +89,24 @@ const getActivePromotions = catchAsync(async (req: Request, res: Response) => {
 });
 
 /**
- * Collect promotion (User - Authenticated)
- * POST /api/v1/promotions/:promotionId/collect
- */
-const collectPromotion = catchAsync(async (req: Request, res: Response) => {
-  const userId = (req.user as any)._id;
-  const promotionId = new mongoose.Types.ObjectId(req.params.promotionId);
-
-  const userPromotion = await promotionService.collectPromotion(userId, promotionId);
-  res.status(httpStatus.CREATED).send(userPromotion);
-});
-
-/**
- * Get user's collected promotions
- * GET /api/v1/promotions/my-promotions
- * Query params: status (available|used|expired|all), page, limit
- */
-const getMyPromotions = catchAsync(async (req: Request, res: Response) => {
-  const userId = (req.user as any)._id;
-  const status = (req.query.status as 'available' | 'used' | 'expired' | 'all') || 'all';
-  const page = req.query.page ? parseInt(req.query.page as string) : 1;
-  const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
-
-  const result = await promotionService.getUserPromotions(userId, status, page, limit);
-  res.send(result);
-});
-
-/**
- * Validate promotion code for booking (with auto-collect)
+ * Validate promotion code for booking
  * POST /api/v1/promotions/validate
  * Body: { code, orderAmount }
- *
- * If user hasn't collected the promotion, it will be auto-collected
  */
 const validatePromotion = catchAsync(async (req: Request, res: Response) => {
-  const userId = (req.user as any)._id;
   const { code, orderAmount } = req.body;
 
   if (!code || !orderAmount) {
     throw new ApiError(httpStatus.BAD_REQUEST, 'Promotion code and order amount are required');
   }
 
-  const result = await promotionService.validatePromotionForBooking(userId, code, parseFloat(orderAmount));
+  const result = await promotionService.validatePromotionCode(code, parseFloat(orderAmount));
 
-  // Return with data wrapper for frontend consistency
-  res.send({
-    data: result,
-  });
+  res.send(result);
 });
 
 /**
- * Get promotion by code (for checking details before collect)
+ * Get promotion by code (for checking details)
  * GET /api/v1/promotions/by-code/:code
  */
 const getPromotionByCode = catchAsync(async (req: Request, res: Response) => {
@@ -166,8 +133,6 @@ export default {
   updatePromotion,
   deletePromotion,
   getActivePromotions,
-  collectPromotion,
-  getMyPromotions,
   validatePromotion,
   getPromotionByCode,
   getPromotionStatistics,

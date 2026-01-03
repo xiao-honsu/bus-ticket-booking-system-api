@@ -120,28 +120,25 @@ const createBooking = async (bookingBody: Partial<IBooking>, sessionId?: string)
   const totalPassengers = passengersWithPrice?.length || 0;
   const calculatedTotalAmount = passengersWithPrice?.reduce((sum, p) => sum + p.seatPrice, 0) || 0;
 
-  // Handle promotion discount if provided
+  // Handle promotion discount if provided (using promotion code)
   let discountAmount = 0;
   let finalAmount = bookingBody.totalAmount || calculatedTotalAmount;
   let promotionData: any = {};
 
-  if (bookingBody.userPromotion && bookingBody.user) {
+  if (bookingBody.promotionCode) {
     try {
-      // Validate and apply promotion using userPromotionId
-      const userPromotionId = new mongoose.Types.ObjectId(bookingBody.userPromotion as any);
-      const userId = new mongoose.Types.ObjectId(bookingBody.user as any);
-
+      // Validate and apply promotion using code
       const {
         promotion,
         discountAmount: discount,
         finalAmount: final,
-      } = await promotionService.validatePromotionById(userId, userPromotionId, calculatedTotalAmount);
+      } = await promotionService.validatePromotionCode(bookingBody.promotionCode, calculatedTotalAmount);
 
       discountAmount = discount;
       finalAmount = final;
       promotionData = {
         appliedPromotion: promotion._id,
-        userPromotion: userPromotionId,
+        promotionCode: bookingBody.promotionCode,
         discountAmount,
         originalAmount: calculatedTotalAmount,
       };
@@ -188,14 +185,10 @@ const createBooking = async (bookingBody: Partial<IBooking>, sessionId?: string)
   const booking = Array.isArray(bookingDoc) ? bookingDoc[0] : bookingDoc;
 
   // Mark promotion as used if applied
-  if (promotionData.userPromotion && bookingBody.user) {
+  if (promotionData.promotionCode) {
     try {
-      await promotionService.usePromotion(
-        new mongoose.Types.ObjectId(bookingBody.user as any),
-        promotionData.userPromotion,
-        booking._id
-      );
-      logger.info(`Promotion ${promotionData.userPromotion} marked as used for booking ${booking._id}`);
+      await promotionService.usePromotionCode(promotionData.promotionCode, booking._id);
+      logger.info(`Promotion ${promotionData.promotionCode} used in booking ${booking._id}`);
     } catch (error: any) {
       logger.error(`Failed to mark promotion as used: ${error.message}`);
       // Don't fail the booking if promotion marking fails
