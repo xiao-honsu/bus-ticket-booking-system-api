@@ -21,6 +21,7 @@ const allRoles = {
     'getTrips',
     'manageTrips',
     'manageBookings',
+    'manageOwnBookings',
     'manageOperators',
     'viewAnalytics',
     'manageReviews',
